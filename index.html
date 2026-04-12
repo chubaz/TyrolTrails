@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>South Tyrol | Trail Explorer</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        :root { --primary: #111827; --accent: #3b82f6; --success: #10b981; --border: #e5e7eb; }
+        body { margin: 0; padding: 0; font-family: 'Public Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
+        #sidebar { width: 380px; background: #fff; padding: 30px; z-index: 1000; box-shadow: 2px 0 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        #map { flex-grow: 1; }
+        .card { background: #f9fafb; padding: 20px; border-radius: 12px; border: 1px solid var(--border); font-size: 0.95rem; }
+        h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.02em; color: var(--primary); }
+        .subtitle { font-size: 0.75rem; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+        
+        .slider-container { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+        input[type=range] { width: 100%; cursor: pointer; }
+
+        button { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600; transition: 0.2s; }
+        button:hover { background: #1f2937; }
+        .gpx-btn { background: var(--success); margin-top: 10px; }
+        .alt-btn { background: #fff; color: var(--accent); border: 2px solid var(--accent); margin-top: 10px; }
+        .alt-btn:hover { background: var(--accent); color: #fff; }
+        
+        .hotel-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; cursor: pointer; transition: 0.2s; }
+        .hotel-card:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .hotel-img { width: 100%; height: 140px; object-fit: cover; background: #f3f4f6; }
+        .hotel-content { padding: 16px; }
+        .hotel-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .action-btn { flex: 1; padding: 8px; border-radius: 6px; font-size: 0.75rem; text-align: center; text-decoration: none; font-weight: 600; border: 1px solid var(--border); }
+        .btn-call { background: #f9fafb; color: var(--primary); }
+        .btn-web { background: var(--accent); color: white; border: none; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <div><div class="subtitle">South Tyrol</div><h1>Trail Explorer</h1></div>
+    
+    <div id="status-card" class="card">
+        <div id="status-text">Zoom in and click a trail to explore.</div>
+    </div>
+
+    <div class="slider-container">
+        <label style="font-size: 0.85rem; font-weight: 700; color: #4b5563;">Hotel Search Radius: <span id="radiusLabel">2000</span>m</label>
+        <input type="range" id="radiusSlider" min="500" max="10000" value="2000" step="500">
+    </div>
+
+    <div id="route-summary" class="card" style="display: none;">
+        <div style="font-weight: 700; margin-bottom: 12px; color: #374151;">Trip Summary</div>
+        <div id="stat-list" style="line-height: 1.8;"></div>
+        <button id="switch-side" class="alt-btn" style="display: none;">Switch Path Side</button>
+        <button id="download-gpx" class="gpx-btn">Download GPX</button>
+    </div>
+
+    <div id="hotel-box" style="display: none;"><div style="font-weight: 700; margin-bottom: 16px; font-size: 1rem;">Accommodations Nearby</div><div id="hotel-list"></div></div>
+    
+    <button onclick="window.location.reload()" style="background: #f3f4f6; color: #374151; margin-top: auto;">Reset Map</button>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+<script>
+    const map = L.map('map', {zoomControl: false}).setView([46.47, 11.36], 13);
+    L.control.zoom({position: 'bottomright'}).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    let trailsLayer = L.layerGroup().addTo(map);
+    let routeGroup = L.layerGroup().addTo(map);
+    let markerGroup = L.layerGroup().addTo(map);
+    let bufferLayer = L.layerGroup().addTo(map);
+    
+    let activeTrailId = null;
+    let startPt = null; let endPt = null;
+    let isAltPath = false;
+    let loadedTrailIds = new Set();
+    let currentRouteGeoJSON = null;
+
+    async function loadTrailsInView() {
+        if (activeTrailId || map.getZoom() < 11) return;
+        const bounds = map.getBounds();
+        const url = `http://localhost:8000/get-trails-in-view?min_lat=${bounds.getSouth()}&min_lon=${bounds.getWest()}&max_lat=${bounds.getNorth()}&max_lon=${bounds.getEast()}`;
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            data.features.forEach(feature => {
+                if (!loadedTrailIds.has(feature.properties.id)) {
+                    loadedTrailIds.add(feature.properties.id);
+                    const trailGeoJSON = L.geoJSON(feature, {
+                        style: { color: '#94a3b8', weight: 4, opacity: 0.6, cursor: 'pointer' },
+                        onEachFeature: (f, layer) => {
+                            layer.on('mouseover', () => { if(!activeTrailId) layer.setStyle({color:'#3b82f6', opacity: 1}); });
+                            layer.on('mouseout', () => { if(!activeTrailId) layer.setStyle({color:'#94a3b8', opacity: 0.6}); });
+                            layer.on('click', (e) => { 
+                                L.DomEvent.stopPropagation(e); 
+                                if (!activeTrailId) activateTrail(f.properties.id, f.properties.name, trailGeoJSON);
+                                else handlePointSelection(e.latlng);
+                            });
+                        }
+                    }).addTo(trailsLayer);
+                }
+            });
+        } catch (e) {}
+    }
+
+    map.on('moveend', loadTrailsInView);
+
+    function activateTrail(id, name, layerGroup) {
+        activeTrailId = id;
+        trailsLayer.eachLayer(layer => { if (layer !== layerGroup) map.removeLayer(layer); });
+        layerGroup.setStyle({ color: '#3b82f6', weight: 8, opacity: 1 });
+        document.getElementById('status-text').innerHTML = `<b>${name}</b><br>Click the line to set <b>Start</b>.`;
+    }
+
+    async function handlePointSelection(latlng) {
+        const res = await fetch(`http://localhost:8000/get-nearest-node-on-trail?lat=${latlng.lat}&lon=${latlng.lng}&trail_id=${activeTrailId}`);
+        const data = await res.json();
+        if (!startPt) {
+            startPt = data;
+            L.circleMarker([data.lat, data.lon], {radius: 8, color: '#fff', weight: 3, fillColor: '#10b981', fillOpacity: 1}).addTo(markerGroup);
+            document.getElementById('status-text').innerHTML = `<b>Start set</b><br>Select <b>End</b> point.`;
+        } else if (!endPt) {
+            endPt = data;
+            L.circleMarker([data.lat, data.lon], {radius: 8, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1}).addTo(markerGroup);
+            calculateRoute();
+        }
+    }
+
+    async function calculateRoute() {
+        const res = await fetch(`http://localhost:8000/get-route?start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&trail_id=${activeTrailId}&alt=${isAltPath}`);
+        const data = await res.json();
+        currentRouteGeoJSON = data.geojson;
+        
+        routeGroup.clearLayers();
+        L.geoJSON(data.geojson, {style: {color: '#f59e0b', weight: 6, opacity: 0.9}}).addTo(routeGroup);
+        if (data.geojson.features.length) map.fitBounds(L.geoJSON(data.geojson).getBounds(), {padding: [50, 50]});
+        
+        document.getElementById('route-summary').style.display = 'block';
+        document.getElementById('stat-list').innerHTML = `Time: <b>${data.stats.est_duration_min} min</b><br>Distance: <b>${(data.stats.actual_dist/1000).toFixed(1)} km</b><br>Climb: <b>${data.stats.elevation_gain} m</b>`;
+        
+        const switchBtn = document.getElementById('switch-side');
+        if (data.is_loop) {
+            switchBtn.style.display = 'block';
+            switchBtn.onclick = () => { isAltPath = !isAltPath; calculateRoute(); };
+        } else { switchBtn.style.display = 'none'; }
+
+        updateBuffer();
+        fetchHotels();
+    }
+
+    function updateBuffer() {
+        if (!currentRouteGeoJSON) return;
+        bufferLayer.clearLayers();
+        const radius = document.getElementById('radiusSlider').value;
+        const buffered = turf.buffer(currentRouteGeoJSON, radius / 1000, {units: 'kilometers'});
+        L.geoJSON(buffered, {style: {color: '#3b82f6', weight: 1, fillOpacity: 0.1, dashArray: '5, 5'}}).addTo(bufferLayer);
+    }
+
+    function getCategoryHtml(cat) {
+        if (!cat || cat === "Not categorized") return '';
+        const count = parseInt(cat.replace(/\D/g, '')) || 0;
+        let icon = cat.toLowerCase().includes('sun') ? '\u2600\uFE0F' : (cat.toLowerCase().includes('flower') ? '\uD83C\uDF3B' : '\u2B50');
+        return '<span style="color: #f59e0b;">' + icon.repeat(count) + '</span>';
+    }
+
+    async function fetchHotels() {
+        const radius = document.getElementById('radiusSlider').value;
+        const url = `http://localhost:8000/get-hotels?trail_id=${activeTrailId}&start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&alt=${isAltPath}&radius=${radius}`;
+        const res = await fetch(url);
+        const hotels = await res.json();
+        
+        document.getElementById('hotel-box').style.display = hotels.length ? 'block' : 'none';
+        let html = '';
+        
+        hotels.forEach((h, i) => {
+            const marker = L.circleMarker([h.latitude, h.longitude], {radius: 8, color: '#fff', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.9}).bindPopup(`<b>${h.name}</b>`).addTo(routeGroup);
+            html += `
+                <div class="hotel-card" onclick="map.setView([${h.latitude}, ${h.longitude}], 15);">
+                    ${h.image_url ? `<img src="${h.image_url}" class="hotel-img" onerror="this.style.display='none'">` : ''}
+                    <div class="hotel-content">
+                        <div class="hotel-title">${h.name}</div>
+                        <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 8px;">
+                            ${getCategoryHtml(h.category)} <span>\u2022</span> ${h.dist}m away
+                        </div>
+                        <div class="hotel-actions">
+                            ${h.phone ? `<a href="tel:${h.phone}" class="action-btn btn-call" onclick="event.stopPropagation()">Call</a>` : ''}
+                            ${h.website ? `<a href="${h.website}" target="_blank" class="action-btn btn-web" onclick="event.stopPropagation()">Website</a>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+        });
+        document.getElementById('hotel-list').innerHTML = html;
+    }
+
+    document.getElementById('radiusSlider').oninput = function() {
+        document.getElementById('radiusLabel').innerText = this.value;
+        if (currentRouteGeoJSON) {
+            updateBuffer();
+            fetchHotels();
+        }
+    };
+
+    loadTrailsInView();
+</script>
+</body>
+</html>

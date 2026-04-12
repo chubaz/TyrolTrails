@@ -1,0 +1,20 @@
+# Environments
+venv/
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Project specific data files (if temporary)
+nearby_hotels.json
+shortest_path.geojson
+test_gpx.py
