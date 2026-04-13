@@ -1,81 +1,76 @@
-# 🏔️ TyrolTrails: South Tyrol Trail Explorer
+# 🏔️ TyrolTrails: 3D South Tyrol Trail Explorer
 
-A professional-grade geospatial application for discovering hiking trails across the Dolomites and planning your journey with integrated accommodation discovery.
+A high-performance 3D geospatial application for discovering hiking trails across the Dolomites and planning your journey with real-time alpine intelligence.
 
 ## 🚀 Key Features
 
-*   **Dynamic Trail Discovery**: Interactive map that automatically fetches and displays trails as you pan and zoom.
-*   **Precision Routing**: Click *anywhere* on a trail line to set your start and end points—not just at pre-defined corners.
+*   **3D Alpine Engine**: Full 3D terrain exploration with Mapbox GL JS, featuring 1.5x mountain exaggeration and atmospheric sky rendering.
+*   **Dynamic Trail Discovery**: Interactive map that automatically fetches and displays trails from your database as you explore.
+*   **Precision Routing**: Click *anywhere* on a trail line to set your start and end points—not just at pre-defined nodes.
+*   **Integrated Alpine Services**:
+    *   **Peak Explorer**: Automatically identifies prominent mountain peaks in your view using the Overpass API (Wikipedia-linked).
+    *   **Live Weather**: Real-time summit weather conditions (temperature and wind) from the Open-Meteo API.
+    *   **Live View**: Automatically fetches open-source photographs of your destination via Wikimedia Commons.
+    *   **Safety Warning**: Calculates exact sunset times for your destination to ensure safe hiking planning.
 *   **Circular Trail Intelligence**: 
     *   **Side Switching**: Toggle between the "Direct Path" and the "Alternative Wrap-around" on any circular loop.
-    *   **Whole-Loop Detection**: Automatically recognizes and calculates the full journey if you start and end at the same point.
-*   **Smart "Perceived" Metrics**: Calculates hiking time using Naismith's Rule, accounting for both horizontal distance and elevation gain.
+*   **Elevation Profile**: Interactive elevation chart sampling real-world altitude data along your custom route.
 *   **Integrated Accommodations**: 
-    *   Find hotels, pensions, and farm stays directly along your specific route section.
-    *   Visual ratings (Stars ⭐, Suns ☀️, Flowers 🌻).
-    *   One-click "Call" and "Website" buttons for instant booking.
-*   **GPX Export**: Download your custom-sliced route as a standard GPX file for use in handheld GPS devices or mobile apps.
+    *   Find hotels and pensions directly along your specific route section with dynamic search radius.
+    *   Visual ratings and one-click "Call" or "Website" access.
+*   **GPX Export**: Download your custom-sliced route as a standard GPX file.
 
 ---
 
 ## 🛠️ Tech Stack
 
 *   **Backend**: FastAPI (Python)
-*   **Database**: PostgreSQL + PostGIS + pgRouting
-*   **Frontend**: Leaflet.js + Turf.js
-*   **Data Source**: Open Data Hub (ODH) South Tyrol API
+*   **Database**: PostgreSQL + PostGIS
+*   **Frontend**: Mapbox GL JS v3, Turf.js, Chart.js
+*   **Data Sources**: Open Data Hub (ODH) South Tyrol, Overpass API, Open-Meteo, Wikipedia/Wikimedia
 
 ---
 
 ## 📖 How to Use the App
 
-### 1. Discover a Trail
-*   **Zoom in** to any area in South Tyrol. Trails will appear as faint grey "Ghost" lines.
-*   **Hover** over a trail to see it highlight.
-*   **Click a trail** to "Activate" it. All other trails will fade out so you can focus on your choice.
+### 1. Navigation & Search
+*   **Search**: Use the sidebar search bar to fly instantly to any peak or town in South Tyrol.
+*   **3D Camera**: Hold **Right-Click** and drag to rotate the camera. Use the scroll wheel to zoom and tilt.
 
 ### 2. Plan Your Journey
-*   **Set Start Point**: Click anywhere on the bold blue trail line to drop a **Green Marker**.
-*   **Set End Point**: Click another spot on the same blue line to drop a **Red Marker**.
-*   The app will instantly map the journey between those two points.
+*   **Activate Trail**: Zoom in and hover over a trail to highlight it. Click once to select it.
+*   **Set Points**: Click on the active trail to set your **Start** (Green) and **End** (Red) points.
+*   The app will instantly generate the 3D route, update the elevation chart, and fetch destination-specific weather and photos.
 
-### 3. Handle Circular Loops
-*   If the trail is a loop, a **"Switch Path Side"** button will appear in the sidebar.
-*   Click it to instantly toggle between the two ways around the circle. The stats and hotel list will update automatically.
-
-### 4. Explore Accommodations
-*   Adjust the **Radius Slider** in the sidebar to search deeper into the landscape (up to 10km).
-*   A blue "search zone" will appear around your path on the map.
-*   **Click a Hotel Card** in the sidebar to zoom the map directly to that building.
-
-### 5. Export
-*   Once you are happy with your route, click **"Download GPX"** to save the file to your computer.
+### 3. Handle Loops & Hotels
+*   For loop trails, use the **"Switch Path Side"** button to toggle direction.
+*   Adjust the **Radius Slider** to find accommodations near your route. Click a hotel card to fly the 3D camera directly to its location.
 
 ---
 
 ## 💻 Installation
 
 1.  **Database Setup**: 
-    Ensure you have PostgreSQL with the PostGIS and pgRouting extensions installed.
+    Ensure you have PostgreSQL with the PostGIS extension installed.
     ```sql
     CREATE EXTENSION postgis;
-    CREATE EXTENSION pgrouting;
     ```
 
 2.  **Ingest Data**:
-    Run the ingestion scripts to fetch the latest trails and hotels from the Open Data Hub.
     ```bash
     python3 ingest_data.py
     python3 ingest_pois.py
     ```
 
-3.  **Start the Server**:
+3.  **Configuration**:
+    Open `index.html` and replace the following placeholders:
+    *   `YOUR_MAPBOX_TOKEN`: Your Mapbox GL JS access token.
+    *   `YOUR_API_BASE_URL`: Your backend API URL (e.g., `http://localhost:8000` or an ngrok URL).
+
+4.  **Start the Server**:
     ```bash
     python3 app.py
     ```
-
-4.  **View the Map**:
-    Open `index.html` in any modern web browser.
 
 ---
 
