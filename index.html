@@ -1,564 +1,174 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="UTF-8">
     <title>South Tyrol | Trail Explorer</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;700&display=swap">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-        :root {
-            --primary: #111827;
-            --accent: #3b82f6;
-            --success: #10b981;
-            --border: #e5e7eb;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Public Sans', sans-serif;
-            height: 100vh;
-            display: flex;
-            overflow: hidden;
-        }
-
-        #sidebar {
-            width: 380px;
-            background: #fff;
-            padding: 30px;
-            z-index: 1000;
-            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            overflow-y: auto;
-        }
-
-        #map {
-            flex-grow: 1;
-        }
-
-        .card {
-            background: #f9fafb;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            font-size: 0.95rem;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            letter-spacing: -0.02em;
-            color: var(--primary);
-        }
-
-        .subtitle {
-            font-size: 0.75rem;
-            color: #6b7280;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-
-        .slider-container {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        input[type=range] {
-            width: 100%;
-            cursor: pointer;
-        }
-
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
-            font-weight: 600;
-            transition: 0.2s;
-        }
-
-        button:hover {
-            background: #1f2937;
-        }
-
-        .gpx-btn {
-            background: var(--success);
-            margin-top: 10px;
-        }
-
-        .alt-btn {
-            background: #fff;
-            color: var(--accent);
-            border: 2px solid var(--accent);
-            margin-top: 10px;
-        }
-
-        .alt-btn:hover {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .hotel-card {
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-            margin-bottom: 16px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .hotel-card:hover {
-            border-color: var(--accent);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-
-        .hotel-img {
-            width: 100%;
-            height: 140px;
-            object-fit: cover;
-            background: #f3f4f6;
-        }
-
-        .hotel-content {
-            padding: 16px;
-        }
-
-        .hotel-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 12px;
-        }
-
-        .action-btn {
-            flex: 1;
-            padding: 8px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            text-align: center;
-            text-decoration: none;
-            font-weight: 600;
-            border: 1px solid var(--border);
-        }
-
-        .btn-call {
-            background: #f9fafb;
-            color: var(--primary);
-        }
-
-        .btn-web {
-            background: var(--accent);
-            color: white;
-            border: none;
-        }
-
-        /* Tabs Styling */
-        .tabs {
-            display: flex;
-            border-bottom: 2px solid var(--border);
-            margin-bottom: 16px;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: #6b7280;
-            transition: 0.2s;
-        }
-
-        .tab.active {
-            color: var(--accent);
-            border-bottom: 2px solid var(--accent);
-            margin-bottom: -2px;
-        }
-
-        .event-banner {
-            background: #fef3c7;
-            border: 1px solid #fcd34d;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            color: #92400e;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .poi-badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            margin-right: 6px;
-        }
-
-        .badge-hut { background: #ffedd5; color: #9a3412; }
-        .badge-rest { background: #f3f4f6; color: #374151; }
-
-        .webcam-icon, .poi-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            background: white;
-            border: 2px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
+        :root { --primary: #111827; --accent: #3b82f6; --success: #10b981; --border: #e5e7eb; }
+        body { margin: 0; padding: 0; font-family: 'Public Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
+        #sidebar { width: 380px; background: #fff; padding: 30px; z-index: 1000; box-shadow: 2px 0 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        #map { flex-grow: 1; }
+        .card { background: #f9fafb; padding: 20px; border-radius: 12px; border: 1px solid var(--border); font-size: 0.95rem; }
+        h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.02em; color: var(--primary); }
+        .subtitle { font-size: 0.75rem; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+        .slider-container { display: flex; flex-direction: column; gap: 8px; }
+        input[type=range] { width: 100%; cursor: pointer; }
+        button { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600; transition: 0.2s; }
+        button:hover { background: #1f2937; }
+        .gpx-btn { background: var(--success); margin-top: 10px; }
+        .alt-btn { background: #fff; color: var(--accent); border: 2px solid var(--accent); margin-top: 10px; }
+        .hotel-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; cursor: pointer; transition: 0.2s; }
+        .hotel-img { width: 100%; height: 140px; object-fit: cover; background: #f3f4f6; }
+        .hotel-content { padding: 16px; }
+        .hotel-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .action-btn { flex: 1; padding: 8px; border-radius: 6px; font-size: 0.75rem; text-align: center; text-decoration: none; font-weight: 600; border: 1px solid var(--border); color: var(--primary); }
     </style>
 </head>
-
 <body>
 
-    <div id="sidebar">
-        <div>
-            <div class="subtitle">South Tyrol</div>
-            <h1>Trail Explorer</h1>
-        </div>
-
-        <div id="status-card" class="card">
-            <div id="status-text">Zoom in and click a trail to explore.</div>
-        </div>
-
-        <div class="slider-container">
-            <label style="font-size: 0.85rem; font-weight: 700; color: #4b5563;">Hotel Search Radius: <span
-                    id="radiusLabel">2000</span>m</label>
-            <input type="range" id="radiusSlider" min="500" max="10000" value="2000" step="500">
-        </div>
-
-        <div id="route-summary" class="card" style="display: none;">
-            <div style="font-weight: 700; margin-bottom: 12px; color: #374151;">Trip Summary</div>
-            <div id="stat-list" style="line-height: 1.8;"></div>
-            <button id="switch-side" class="alt-btn" style="display: none;">Switch Path Side</button>
-            <button id="download-gpx" class="gpx-btn">Download GPX</button>
-        </div>
-
-        <div id="tab-container" style="display: none; flex-direction: column; flex-grow: 1; overflow: hidden;">
-            <div class="tabs">
-                <div class="tab active" onclick="showTab('sleep')">🏨 Sleep</div>
-                <div class="tab" onclick="showTab('eat')">🍔 Eat</div>
-                <div class="tab" onclick="showTab('events')">📅 Events</div>
-            </div>
-            
-            <div id="tab-content" style="overflow-y: auto; flex-grow: 1;">
-                <div id="sleep-list"></div>
-                <div id="eat-list" style="display: none;"></div>
-                <div id="event-list" style="display: none;"></div>
-            </div>
-        </div>
-
-        <button onclick="window.location.reload()" style="background: #f3f4f6; color: #374151; margin-top: auto;">Reset
-            Map</button>
+<div id="sidebar">
+    <div><div class="subtitle">South Tyrol</div><h1>Trail Explorer</h1></div>
+    <div id="status-card" class="card"><div id="status-text">Zoom in and click a trail to explore.</div></div>
+    <div class="slider-container">
+        <label style="font-size: 0.85rem; font-weight: 700; color: #4b5563;">Hotel Search Radius: <span id="radiusLabel">2000</span>m</label>
+        <input type="range" id="radiusSlider" min="500" max="10000" value="2000" step="500">
     </div>
+    <div id="route-summary" class="card" style="display: none;">
+        <div style="font-weight: 700; margin-bottom: 12px; color: #374151;">Trip Summary</div>
+        <div id="stat-list" style="line-height: 1.8;"></div>
+        <button id="switch-side" class="alt-btn" style="display: none;">Switch Path Side</button>
+        <button id="download-gpx" class="gpx-btn">Download GPX</button>
+    </div>
+    <div id="hotel-box" style="display: none;"><div style="font-weight: 700; margin-bottom: 16px; font-size: 1rem;">Accommodations Nearby</div><div id="hotel-list"></div></div>
+    <button onclick="window.location.reload()" style="background: #f3f4f6; color: #374151; margin-top: auto;">Reset Map</button>
+</div>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
-    <script>
-        // 🌟 Add your API URL here! Change this ONE line if the tunnel restarts.
-        const API_URL = "https://starry-cloning-pug.ngrok-free.dev";
+<script>
+    const API_BASE = "https://starry-cloning-pug.ngrok-free.dev"; 
 
-        const map = L.map('map', { zoomControl: false }).setView([46.47, 11.36], 13);
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    async function fetchAPI(endpoint) {
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+            headers: { "ngrok-skip-browser-warning": "69420" }
+        });
+        return await res.json();
+    }
 
-        let trailsLayer = L.layerGroup().addTo(map);
-        let routeGroup = L.layerGroup().addTo(map);
-        let markerGroup = L.layerGroup().addTo(map);
-        let bufferLayer = L.layerGroup().addTo(map);
+    const map = L.map('map', {zoomControl: false}).setView([46.47, 11.36], 13);
+    L.control.zoom({position: 'bottomright'}).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        // New Layer Groups
-        let hotelMarkers = L.layerGroup().addTo(map);
-        let gastronomyMarkers = L.layerGroup().addTo(map);
-        let webcamMarkers = L.layerGroup().addTo(map);
-        let eventMarkers = L.layerGroup().addTo(map);
-        let poiMarkers = L.layerGroup().addTo(map);
+    let trailsLayer = L.layerGroup().addTo(map);
+    let routeGroup = L.layerGroup().addTo(map);
+    let markerGroup = L.layerGroup().addTo(map);
+    let bufferLayer = L.layerGroup().addTo(map);
+    
+    let activeTrailId = null;
+    let startPt = null; let endPt = null;
+    let isAltPath = false;
+    let loadedTrailIds = new Set();
+    let currentRouteGeoJSON = null;
 
-        // Layer Controls
-        const overlays = {
-            "Hotels": hotelMarkers,
-            "Restaurants": gastronomyMarkers,
-            "Webcams": webcamMarkers,
-            "Events": eventMarkers,
-            "Water & Viewpoints": poiMarkers
-        };
-        L.control.layers(null, overlays, { position: 'topright' }).addTo(map);
-
-        let activeTrailId = null;
-        let startPt = null; let endPt = null;
-        let isAltPath = false;
-        let loadedTrailIds = new Set();
-        let loadedEventIds = new Set();
-        let loadedPoiIds = new Set();
-        let loadedWebcamIds = new Set();
-        let currentRouteGeoJSON = null;
-
-        async function loadAllInView() {
-            if (map.getZoom() < 11) return;
-            const bounds = map.getBounds();
-            const bbox = `min_lat=${bounds.getSouth()}&min_lon=${bounds.getWest()}&max_lat=${bounds.getNorth()}&max_lon=${bounds.getEast()}`;
-
-            // Load Trails (only if not in active mode)
-            if (!activeTrailId) {
-                const res = await fetch(`${API_URL}/get-trails-in-view?${bbox}`, { headers: { "ngrok-skip-browser-warning": "1" } });
-                const data = await res.json();
-                data.features.forEach(feature => {
-                    if (!loadedTrailIds.has(feature.properties.id)) {
-                        loadedTrailIds.add(feature.properties.id);
-                        const trailGeoJSON = L.geoJSON(feature, {
-                            style: { color: '#94a3b8', weight: 4, opacity: 0.6, cursor: 'pointer' },
-                            onEachFeature: (f, layer) => {
-                                layer.on('mouseover', () => { if (!activeTrailId) layer.setStyle({ color: '#3b82f6', opacity: 1 }); });
-                                layer.on('mouseout', () => { if (!activeTrailId) layer.setStyle({ color: '#94a3b8', opacity: 0.6 }); });
-                                layer.on('click', (e) => {
-                                    L.DomEvent.stopPropagation(e);
-                                    if (!activeTrailId) activateTrail(f.properties.id, f.properties.name, trailGeoJSON);
-                                    else handlePointSelection(e.latlng);
-                                });
-                            }
-                        }).addTo(trailsLayer);
-                    }
-                });
-            }
-
-            // Load Events if zoom is high enough
-            if (map.getZoom() >= 13) {
-                const eRes = await fetch(`${API_URL}/get-events-in-view?${bbox}`, { headers: { "ngrok-skip-browser-warning": "1" } });
-                const eData = await eRes.json();
-                eData.features.forEach(f => {
-                    if (!loadedEventIds.has(f.properties.id)) {
-                        loadedEventIds.add(f.properties.id);
-                        L.circleMarker([f.properties.latitude, f.properties.longitude], { radius: 6, color: '#fff', weight: 1.5, fillColor: '#8b5cf6', fillOpacity: 0.9 })
-                            .bindPopup(`<b>📅 Event: ${f.properties.name}</b><br>${new Date(f.properties.begin_date).toLocaleDateString()}`)
-                            .addTo(eventMarkers);
-                    }
-                });
-            }
-        }
-
-        map.on('moveend', loadAllInView);
-
-        function activateTrail(id, name, layerGroup) {
-            activeTrailId = id;
-            trailsLayer.eachLayer(layer => { if (layer !== layerGroup) map.removeLayer(layer); });
-            layerGroup.setStyle({ color: '#3b82f6', weight: 8, opacity: 1 });
-            document.getElementById('status-text').innerHTML = `<b>${name}</b><br>Click the line to set <b>Start</b>.`;
-        }
-
-        async function handlePointSelection(latlng) {
-            // Updated to use API_URL
-            const res = await fetch(`${API_URL}/get-nearest-node-on-trail?lat=${latlng.lat}&lon=${latlng.lng}&trail_id=${activeTrailId}`, {
-                headers: { "ngrok-skip-browser-warning": "1" }
+    async function loadTrailsInView() {
+        if (activeTrailId || map.getZoom() < 11) return;
+        const bounds = map.getBounds();
+        const url = `/get-trails-in-view?min_lat=${bounds.getSouth()}&min_lon=${bounds.getWest()}&max_lat=${bounds.getNorth()}&max_lon=${bounds.getEast()}`;
+        try {
+            const data = await fetchAPI(url);
+            data.features.forEach(feature => {
+                if (!loadedTrailIds.has(feature.properties.id)) {
+                    loadedTrailIds.add(feature.properties.id);
+                    const trailGeoJSON = L.geoJSON(feature, {
+                        style: { color: '#94a3b8', weight: 4, opacity: 0.6, cursor: 'pointer' },
+                        onEachFeature: (f, layer) => {
+                            layer.on('mouseover', () => { if(!activeTrailId) layer.setStyle({color:'#3b82f6', opacity: 1}); });
+                            layer.on('mouseout', () => { if(!activeTrailId) layer.setStyle({color:'#94a3b8', opacity: 0.6}); });
+                            layer.on('click', (e) => { 
+                                L.DomEvent.stopPropagation(e); 
+                                if (!activeTrailId) activateTrail(f.properties.id, f.properties.name, trailGeoJSON);
+                                else handlePointSelection(e.latlng);
+                            });
+                        }
+                    }).addTo(trailsLayer);
+                }
             });
-            const data = await res.json();
-            if (!startPt) {
-                startPt = data;
-                L.circleMarker([data.lat, data.lon], { radius: 8, color: '#fff', weight: 3, fillColor: '#10b981', fillOpacity: 1 }).addTo(markerGroup);
-                document.getElementById('status-text').innerHTML = `<b>Start set</b><br>Select <b>End</b> point.`;
-            } else if (!endPt) {
-                endPt = data;
-                L.circleMarker([data.lat, data.lon], { radius: 8, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1 }).addTo(markerGroup);
-                calculateRoute();
-            }
+        } catch (e) {}
+    }
+
+    map.on('moveend', loadTrailsInView);
+
+    function activateTrail(id, name, layerGroup) {
+        activeTrailId = id;
+        trailsLayer.eachLayer(layer => { if (layer !== layerGroup) map.removeLayer(layer); });
+        layerGroup.setStyle({ color: '#3b82f6', weight: 8, opacity: 1 });
+        document.getElementById('status-text').innerHTML = `<b>${name}</b><br>Click the line to set <b>Start</b>.`;
+    }
+
+    async function handlePointSelection(latlng) {
+        const data = await fetchAPI(`/get-nearest-node-on-trail?lat=${latlng.lat}&lon=${latlng.lng}&trail_id=${activeTrailId}`);
+        if (!startPt) {
+            startPt = data;
+            L.circleMarker([data.lat, data.lon], {radius: 8, color: '#fff', weight: 3, fillColor: '#10b981', fillOpacity: 1}).addTo(markerGroup);
+            document.getElementById('status-text').innerHTML = `<b>Start set</b><br>Select <b>End</b> point.`;
+        } else if (!endPt) {
+            endPt = data;
+            L.circleMarker([data.lat, data.lon], {radius: 8, color: '#fff', weight: 3, fillColor: '#ef4444', fillOpacity: 1}).addTo(markerGroup);
+            calculateRoute();
         }
+    }
 
-        async function calculateRoute() {
-            const res = await fetch(`${API_URL}/get-route?start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&trail_id=${activeTrailId}&alt=${isAltPath}`, {
-                headers: { "ngrok-skip-browser-warning": "1" }
-            });
-            const data = await res.json();
-            currentRouteGeoJSON = data.geojson;
+    async function calculateRoute() {
+        const data = await fetchAPI(`/get-route?start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&trail_id=${activeTrailId}&alt=${isAltPath}`);
+        currentRouteGeoJSON = data.geojson;
+        routeGroup.clearLayers();
+        const routeLayer = L.geoJSON(data.geojson, {style: {color: '#f59e0b', weight: 6, opacity: 0.9}}).addTo(routeGroup);
+        if (data.geojson.features.length) map.fitBounds(routeLayer.getBounds(), {padding: [50, 50]});
+        document.getElementById('route-summary').style.display = 'block';
+        document.getElementById('stat-list').innerHTML = `Time: <b>${data.stats.est_duration_min} min</b><br>Distance: <b>${(data.stats.actual_dist/1000).toFixed(1)} km</b><br>Climb: <b>${data.stats.elevation_gain} m</b>`;
+        const switchBtn = document.getElementById('switch-side');
+        if (data.is_loop) { switchBtn.style.display = 'block'; switchBtn.onclick = () => { isAltPath = !isAltPath; calculateRoute(); }; }
+        updateBuffer();
+        fetchHotels();
+    }
 
-            routeGroup.clearLayers();
-            L.geoJSON(data.geojson, { style: { color: '#f59e0b', weight: 6, opacity: 0.9 } }).addTo(routeGroup);
-            if (data.geojson.features.length) map.fitBounds(L.geoJSON(data.geojson).getBounds(), { padding: [50, 50] });
+    function updateBuffer() {
+        if (!currentRouteGeoJSON) return;
+        bufferLayer.clearLayers();
+        const radius = document.getElementById('radiusSlider').value;
+        const buffered = turf.buffer(currentRouteGeoJSON, radius / 1000, {units: 'kilometers'});
+        L.geoJSON(buffered, {style: {color: '#3b82f6', weight: 1, fillOpacity: 0.1, dashArray: '5, 5'}}).addTo(bufferLayer);
+    }
 
-            document.getElementById('route-summary').style.display = 'block';
-            document.getElementById('stat-list').innerHTML = `Time: <b>${data.stats.est_duration_min} min</b><br>Distance: <b>${(data.stats.actual_dist / 1000).toFixed(1)} km</b><br>Climb: <b>${data.stats.elevation_gain} m</b>`;
+    function getCategoryHtml(cat) {
+        if (!cat || cat === "Not categorized") return '';
+        const count = parseInt(cat.replace(/\D/g, '')) || 0;
+        const icon = cat.toLowerCase().includes('sun') ? '\u2600\uFE0F' : (cat.toLowerCase().includes('flower') ? '\uD83C\uDF3B' : '\u2B50');
+        return '<span style="color: #f59e0b;">' + icon.repeat(count) + '</span>';
+    }
 
-            const switchBtn = document.getElementById('switch-side');
-            if (data.is_loop) {
-                switchBtn.style.display = 'block';
-                switchBtn.onclick = () => { isAltPath = !isAltPath; calculateRoute(); };
-            } else { switchBtn.style.display = 'none'; }
+    async function fetchHotels() {
+        const radius = document.getElementById('radiusSlider').value;
+        const hotels = await fetchAPI(`/get-hotels?trail_id=${activeTrailId}&start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&alt=${isAltPath}&radius=${radius}`);
+        document.getElementById('hotel-box').style.display = hotels.length ? 'block' : 'none';
+        let html = '';
+        hotels.forEach((h, i) => {
+            html += `<div class="hotel-card" onclick="map.setView([${h.latitude}, ${h.longitude}], 15);"><div class="hotel-content"><div class="hotel-title">${h.name}</div><div style="font-size:0.8rem; color:#666; margin-bottom:8px;">${getCategoryHtml(h.category)} <span>\u2022</span> ${h.dist}m away</div><div class="hotel-actions">${h.phone ? `<a href="tel:${h.phone}" class="action-btn">Call</a>` : ''}${h.website ? `<a href="${h.website}" target="_blank" class="action-btn">Website</a>` : ''}</div></div></div>`;
+        });
+        document.getElementById('hotel-list').innerHTML = html;
+    }
 
-            document.getElementById('tab-container').style.display = 'flex';
+    document.getElementById('radiusSlider').oninput = function() {
+        document.getElementById('radiusLabel').innerText = this.value;
+        if (currentRouteGeoJSON) { updateBuffer(); fetchHotels(); }
+    };
 
-            updateBuffer();
-            fetchHotels();
-            fetchGastronomy();
-            fetchWebcams();
-            fetchEvents();
-            fetchPOIs();
-            showTab('sleep');
-        }
-
-        function showTab(tab) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.getElementById('sleep-list').style.display = 'none';
-            document.getElementById('eat-list').style.display = 'none';
-            document.getElementById('event-list').style.display = 'none';
-
-            hotelMarkers.remove();
-            gastronomyMarkers.remove();
-            eventMarkers.remove();
-
-            if (tab === 'sleep') {
-                document.querySelectorAll('.tab')[0].classList.add('active');
-                document.getElementById('sleep-list').style.display = 'block';
-                hotelMarkers.addTo(map);
-            } else if (tab === 'eat') {
-                document.querySelectorAll('.tab')[1].classList.add('active');
-                document.getElementById('eat-list').style.display = 'block';
-                gastronomyMarkers.addTo(map);
-            } else if (tab === 'events') {
-                document.querySelectorAll('.tab')[2].classList.add('active');
-                document.getElementById('event-list').style.display = 'block';
-                eventMarkers.addTo(map);
-            }
-        }
-
-        function updateBuffer() {
-            if (!currentRouteGeoJSON) return;
-            bufferLayer.clearLayers();
-            const radius = document.getElementById('radiusSlider').value;
-            const buffered = turf.buffer(currentRouteGeoJSON, radius / 1000, { units: 'kilometers' });
-            L.geoJSON(buffered, { style: { color: '#3b82f6', weight: 1, fillOpacity: 0.1, dashArray: '5, 5' } }).addTo(bufferLayer);
-        }
-
-        function getCategoryHtml(cat) {
-            if (!cat || cat === "Not categorized") return '';
-            const count = parseInt(cat.replace(/\D/g, '')) || 0;
-            let icon = cat.toLowerCase().includes('sun') ? '☀️' : (cat.toLowerCase().includes('flower') ? '🌻' : '⭐');
-            return '<span style="color: #f59e0b;">' + icon.repeat(count) + '</span>';
-        }
-
-        async function fetchHotels() {
-            const radius = document.getElementById('radiusSlider').value;
-            const url = `${API_URL}/get-hotels?trail_id=${activeTrailId}&start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&alt=${isAltPath}&radius=${radius}`;
-            const res = await fetch(url, { headers: { "ngrok-skip-browser-warning": "1" } });
-            const hotels = await res.json();
-            hotelMarkers.clearLayers();
-            let html = '';
-            hotels.forEach(h => {
-                L.circleMarker([h.latitude, h.longitude], { radius: 8, color: '#fff', weight: 2, fillColor: '#3b82f6', fillOpacity: 0.9 }).bindPopup(`<b>${h.name}</b>`).addTo(hotelMarkers);
-                html += renderCard(h, 'sleep');
-            });
-            document.getElementById('sleep-list').innerHTML = html || '<div class="card">No hotels found in this radius.</div>';
-        }
-
-        async function fetchGastronomy() {
-            const radius = document.getElementById('radiusSlider').value;
-            const url = `${API_URL}/get-gastronomy?trail_id=${activeTrailId}&start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&alt=${isAltPath}&radius=${radius}`;
-            const res = await fetch(url, { headers: { "ngrok-skip-browser-warning": "1" } });
-            const gastro = await res.json();
-            gastronomyMarkers.clearLayers();
-            let html = '';
-            gastro.forEach(g => {
-                const isHut = g.type && g.type.toLowerCase().includes('alpine');
-                const emoji = isHut ? '🏔️' : '🍴';
-                const color = isHut ? '#d97706' : '#f59e0b';
-                L.divIcon({ html: emoji, className: 'dummy', iconSize: [20, 20] }); // Placeholder logic
-                L.circleMarker([g.latitude, g.longitude], { radius: 8, color: '#fff', weight: 2, fillColor: color, fillOpacity: 0.9 }).bindPopup(`<b>${emoji} ${g.name}</b>`).addTo(gastronomyMarkers);
-                html += renderCard(g, 'eat', isHut);
-            });
-            document.getElementById('eat-list').innerHTML = html || '<div class="card">No restaurants found.</div>';
-        }
-
-        async function fetchWebcams() {
-            const url = `${API_URL}/get-webcams?trail_id=${activeTrailId}&start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&alt=${isAltPath}`;
-            const res = await fetch(url, { headers: { "ngrok-skip-browser-warning": "1" } });
-            const cams = await res.json();
-            webcamMarkers.clearLayers();
-            cams.forEach(w => {
-                const icon = L.divIcon({ html: '📸', className: 'webcam-icon', iconSize: [24, 24], iconAnchor: [12, 12] });
-                L.marker([w.latitude, w.longitude], { icon: icon })
-                    .bindPopup(`<b>${w.name}</b><br><img src="${w.image_url}" width="300" style="border-radius:8px; margin-top:8px;">`, { maxWidth: 320 })
-                    .addTo(webcamMarkers);
-            });
-        }
-
-        async function fetchEvents() {
-            const url = `${API_URL}/get-events?end_lat=${endPt.lat}&end_lon=${endPt.lon}`;
-            const res = await fetch(url, { headers: { "ngrok-skip-browser-warning": "1" } });
-            const events = await res.json();
-            eventMarkers.clearLayers();
-            let html = '';
-            if (events.length > 0) {
-                html = `<div class="event-banner">🎉 <b>${events.length} Events</b> happening near your destination!</div>`;
-                events.forEach(e => {
-                    L.circleMarker([e.latitude, e.longitude], { radius: 8, color: '#fff', weight: 2, fillColor: '#8b5cf6', fillOpacity: 0.9 }).bindPopup(`<b>${e.name}</b>`).addTo(eventMarkers);
-                    html += renderCard(e, 'event');
-                });
-            }
-            document.getElementById('event-list').innerHTML = html || '<div class="card">No events found in the next 7 days.</div>';
-        }
-
-        async function fetchPOIs() {
-            const url = `${API_URL}/get-essential-pois?trail_id=${activeTrailId}&start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&alt=${isAltPath}`;
-            const res = await fetch(url, { headers: { "ngrok-skip-browser-warning": "1" } });
-            const pois = await res.json();
-            poiMarkers.clearLayers();
-            pois.forEach(p => {
-                let emoji = '📍';
-                let color = '#6b7280';
-                if (p.category === 'parking') { emoji = '🅿️'; color = '#3b82f6'; }
-                else if (p.name.toLowerCase().includes('water') || p.name.toLowerCase().includes('fontana')) { emoji = '💧'; color = '#0ea5e9'; }
-                
-                const icon = L.divIcon({ html: emoji, className: 'poi-icon', iconSize: [20, 20], iconAnchor: [10, 10] });
-                L.marker([p.latitude, p.longitude], { icon: icon }).bindPopup(`<b>${p.name}</b>`).addTo(poiMarkers);
-            });
-        }
-
-        function renderCard(item, type, isHut = false) {
-            const title = item.name;
-            const subtitle = type === 'sleep' ? `${getCategoryHtml(item.category)} \u2022 ${item.dist}m away` : 
-                             (type === 'eat' ? `${isHut ? '<span class="poi-badge badge-hut">Alpine Hut 🏔️</span>' : '<span class="poi-badge badge-rest">Restaurant</span>'} \u2022 ${item.dist}m away` :
-                             `${new Date(item.begin_date).toLocaleDateString()} \u2022 ${item.dist}m away`);
-            
-            return `
-                <div class="hotel-card" onclick="map.setView([${item.latitude}, ${item.longitude}], 15);">
-                    ${item.image_url ? `<img src="${item.image_url}" class="hotel-img" onerror="this.style.display='none'">` : ''}
-                    <div class="hotel-content">
-                        <div class="hotel-title" style="font-weight:700;">${title}</div>
-                        <div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 8px;">${subtitle}</div>
-                        <div class="hotel-actions">
-                            ${item.phone ? `<a href="tel:${item.phone}" class="action-btn btn-call" onclick="event.stopPropagation()">Call</a>` : ''}
-                            ${item.website ? `<a href="${item.website}" target="_blank" class="action-btn btn-web" onclick="event.stopPropagation()">Website</a>` : ''}
-                        </div>
-                    </div>
-                </div>`;
-        }
-
-        document.getElementById('radiusSlider').oninput = function () {
-            document.getElementById('radiusLabel').innerText = this.value;
-            if (currentRouteGeoJSON) {
-                updateBuffer();
-                fetchHotels();
-                fetchGastronomy();
-            }
-        };
-
-        loadAllInView();
-    </script>
+    loadTrailsInView();
+</script>
 </body>
-
 </html>

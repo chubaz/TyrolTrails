@@ -11,16 +11,26 @@ engine = create_engine(
     pool_pre_ping=True
 )
 
+import pyproj
+from shapely.ops import transform
+from functools import partial
+
+# Projector for calculating length in meters (Web Mercator)
+projector = partial(
+    pyproj.transform,
+    pyproj.Proj('EPSG:4326'),
+    pyproj.Proj('EPSG:3857'))
+
 def parse_single_trail(item):
     """Worker function to download and parse a single trail geometry."""
     track_id = item.get('Id')
     details = item.get('Detail', {})
     name = details.get('en', {}).get('Title') or details.get('de', {}).get('Title') or details.get('it', {}).get('Title') or f"Trail {track_id}"
-    length = item.get('DistanceLength', 0)
-    elevation_up = item.get('AltitudeSumUp', 0)
+    
+    elevation_up = item.get('AltitudeSumUp') or 0
     
     gps_track = item.get('GpsTrack')
-    if not gps_track or len(gps_track) == 0:
+    if not gps_track:
         return None
         
     shape_url = gps_track[0].get('GpxTrackUrl')
@@ -33,11 +43,11 @@ def parse_single_trail(item):
         if not shape_json: return None
             
         geom = None
-        if 'Geometry' in shape_json and shape_json['Geometry']:
+        # Try different GeoJSON/ODH Shape variants
+        if 'Geometry' in shape_json:
             geom = shape(shape_json['Geometry'])
         elif 'features' in shape_json and len(shape_json['features']) > 0:
-             geometry_data = shape_json['features'][0].get('geometry')
-             if geometry_data: geom = shape(geometry_data)
+             geom = shape(shape_json['features'][0].get('geometry'))
         elif 'geometry' in shape_json:
              geom = shape(shape_json['geometry'])
         elif 'type' in shape_json and shape_json['type'] in ['Point', 'LineString', 'Polygon', 'MultiLineString']:
@@ -45,11 +55,24 @@ def parse_single_trail(item):
              
         if geom is None: return None
 
+        # Calculate actual length from geometry to detect units of DistanceLength
+        geom_m = transform(projector, geom)
+        geom_len_m = geom_m.length
+        
+        length = item.get('DistanceLength') or 0
+        # If DistanceLength is < 1/100th of geometry length, it's definitely KM
+        if length > 0 and (geom_len_m / length) > 500:
+             length *= 1000
+        # Conversely, if it's way too big, it might already be in meters (most common)
+        # We trust geom_len_m if DistanceLength is 0
+        if length == 0:
+             length = geom_len_m
+
         return {
             'track_id': track_id,
             'name': name,
-            'length_m': length,
-            'elevation_up_m': elevation_up,
+            'length_m': float(length),
+            'elevation_up_m': float(elevation_up),
             'geometry': geom
         }
     except Exception:
