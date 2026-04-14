@@ -11,8 +11,14 @@
     <style>
         :root { --primary: #111827; --accent: #3b82f6; --success: #10b981; --border: #e5e7eb; }
         body { margin: 0; padding: 0; font-family: 'Public Sans', sans-serif; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 380px; background: #fff; padding: 30px; z-index: 1000; box-shadow: 2px 0 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-        #map { flex-grow: 1; }
+        
+        #sidebar { width: 380px; background: #fff; padding: 30px; z-index: 1000; box-shadow: 2px 0 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 20px; overflow-y: auto; transition: 0.3s; flex-shrink: 0; }
+        
+        #right-pane { width: 300px; background: #fff; padding: 20px; z-index: 1000; box-shadow: -2px 0 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 15px; overflow-y: auto; transition: 0.3s; flex-shrink: 0; }
+        #right-pane.collapsed { margin-right: -300px; }
+        
+        #map { flex-grow: 1; position: relative; }
+        
         .card { background: #f9fafb; padding: 20px; border-radius: 12px; border: 1px solid var(--border); font-size: 0.95rem; }
         h1 { margin: 0; font-size: 1.5rem; color: var(--primary); }
         .subtitle { font-size: 0.75rem; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
@@ -26,26 +32,27 @@
         button:hover { background: #1f2937; }
         .gpx-btn { background: var(--success); margin-top: 10px; }
         .alt-btn { background: #fff; color: var(--accent); border: 2px solid var(--accent); margin-top: 10px; }
+        .save-btn { background: #6366f1; margin-top: 10px; }
         
-        /* Peak Marker Styling (Overpass API) */
+        /* Toggle Button */
+        #pane-toggle { position: absolute; right: 20px; top: 20px; z-index: 1001; background: #fff; color: var(--primary); border: 1px solid var(--border); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); cursor: pointer; }
+
+        /* Peak Marker Styling */
         .peak-marker {
             color: #000;
             font-size: 11px;
             font-weight: 900;
             text-transform: uppercase;
-            text-shadow: 
-                -2px -2px 0 #fff,  
-                 2px -2px 0 #fff,
-                -2px  2px 0 #fff,
-                 2px  2px 0 #fff,
-                 0px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0px 2px 4px rgba(0,0,0,0.3);
             pointer-events: none;
             text-align: center;
             line-height: 1.2;
         }
         
-        /* Weather Widget Styling */
+        /* Widget Styling */
         #weather-widget { background: #ebf8ff; border: 1px solid #90cdf4; padding: 12px; border-radius: 8px; margin-top: 15px; display: none;}
+        #sun-widget { display: none; margin-top: 10px; background: #fffbeb; border: 1px solid #fde68a; padding: 12px; border-radius: 8px; color: #b45309; font-size: 0.9rem; }
+        #photo-widget { display: none; margin-top: 15px; }
         
         /* Hotel Card Styling */
         .hotel-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; cursor: pointer; transition: 0.2s; }
@@ -55,6 +62,14 @@
         .hotel-title { font-weight: 700; color: var(--primary); margin-bottom: 4px; }
         .hotel-actions { display: flex; gap: 8px; margin-top: 12px; }
         .action-btn { flex: 1; padding: 8px; border-radius: 6px; font-size: 0.75rem; text-align: center; text-decoration: none; font-weight: 600; border: 1px solid var(--border); color: var(--primary); }
+        
+        /* Saved Route Styling */
+        .saved-route { background: #f9fafb; border: 1px solid var(--border); border-radius: 10px; padding: 15px; cursor: pointer; transition: 0.2s; position: relative; }
+        .saved-route:hover { border-color: var(--accent); background: #fff; }
+        .saved-route-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 5px; padding-right: 25px; }
+        .saved-route-stats { font-size: 0.75rem; color: #6b7280; }
+        .delete-route { position: absolute; top: 10px; right: 10px; color: #ef4444; border: none; background: transparent; width: auto !important; padding: 5px !important; font-size: 1.2rem; }
+        .delete-route:hover { color: #b91c1c; }
     </style>
 </head>
 <body>
@@ -87,10 +102,11 @@
                 <canvas id="elevationChart" width="100" height="50"></canvas>
             </div>
 
-            <div id="sun-widget" style="display: none; margin-top: 10px; background: #fffbeb; border: 1px solid #fde68a; padding: 12px; border-radius: 8px; color: #b45309; font-size: 0.9rem;">
+            <div id="sun-widget">
                 <strong id="sun-text"></strong>
             </div>
 
+            <button id="save-route" class="save-btn">Save This Hike</button>
             <button id="switch-side" class="alt-btn" style="display: none;">Switch Path Side</button>
             <button id="download-gpx" class="gpx-btn">Download GPX</button>
 
@@ -99,7 +115,7 @@
                 <div id="weather-data">Loading...</div>
             </div>
 
-            <div id="photo-widget" style="display: none; margin-top: 15px;">
+            <div id="photo-widget">
                 <div style="font-size: 0.75rem; color: #6b7280; font-weight: bold; margin-bottom: 5px;">LIVE VIEW</div>
                 <img id="location-photo" src="" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);">
             </div>
@@ -113,7 +129,17 @@
         <button onclick="window.location.reload()" style="background: #f3f4f6; color: #374151; margin-top: auto;">Reset Map</button>
     </div>
 
-    <div id="map"></div>
+    <div id="map">
+        <button id="pane-toggle" onclick="toggleRightPane()">📁</button>
+    </div>
+
+    <div id="right-pane" class="collapsed">
+        <div class="subtitle">Saved Plans</div>
+        <h2 style="margin: 0; font-size: 1.2rem;">My Collection</h2>
+        <div id="saved-list" style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+            <div style="font-size: 0.85rem; color: #94a3b8; text-align: center; margin-top: 20px;">No saved routes yet.</div>
+        </div>
+    </div>
 
     <script>
         // Configuration
@@ -137,7 +163,6 @@
             antialias: true
         });
 
-        // Add 3D Navigation Controls
         map.addControl(new mapboxgl.NavigationControl());
 
         let activeTrailId = null;
@@ -146,482 +171,190 @@
         let isAltPath = false;
         let peakMarkers = [];
         let currentRouteGeoJSON = null;
+        let currentRouteStats = null;
+        let activeTrailName = "";
         let elevationChartInstance = null;
+        let savedRoutes = JSON.parse(localStorage.getItem('tyrol_saved_routes') || '[]');
 
         map.on('style.load', () => {
-            // 🏔️ Turn on 3D Terrain
-            map.addSource('mapbox-dem', {
-                'type': 'raster-dem',
-                'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
-                'tileSize': 512,
-                'maxzoom': 14
-            });
+            map.addSource('mapbox-dem', { 'type': 'raster-dem', 'url': 'mapbox://mapbox.mapbox-terrain-dem-v1', 'tileSize': 512, 'maxzoom': 14 });
             map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
 
-            // 🧹 Clean up the map: Hide trails, pistes, and minor paths from the base style
             const layers = map.getStyle().layers;
             const clutterKeywords = ['path', 'piste', 'track', 'pedestrian', 'cycleway', 'steps', 'ski', 'ferry', 'trail', 'service'];
             layers.forEach(layer => {
                 const id = layer.id.toLowerCase();
-                if (clutterKeywords.some(keyword => id.includes(keyword))) {
-                    map.setLayoutProperty(layer.id, 'visibility', 'none');
-                }
+                if (clutterKeywords.some(keyword => id.includes(keyword))) map.setLayoutProperty(layer.id, 'visibility', 'none');
             });
 
-            // Add atmospheric sky
-            map.addLayer({
-                'id': 'sky',
-                'type': 'sky',
-                'paint': { 'sky-type': 'atmosphere', 'sky-atmosphere-sun-intensity': 15 }
-            });
+            map.addLayer({ 'id': 'sky', 'type': 'sky', 'paint': { 'sky-type': 'atmosphere', 'sky-atmosphere-sun-intensity': 15 } });
 
-            // Initialize Sources
             map.addSource('trails', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
             map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
             map.addSource('buffer', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
             map.addSource('hotels', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
             map.addSource('points', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
-            // Layer for all trails (DRAPED)
-            map.addLayer({
-                'id': 'trails-layer',
-                'type': 'line',
-                'source': 'trails',
-                'layout': { 'line-join': 'round', 'line-cap': 'round' },
-                'paint': { 
-                    'line-color': '#94a3b8', 
-                    'line-width': 4, 
-                    'line-opacity': 0.6 
-                }
-            });
+            map.addLayer({ 'id': 'trails-layer', 'type': 'line', 'source': 'trails', 'layout': { 'line-join': 'round', 'line-cap': 'round' }, 'paint': { 'line-color': '#94a3b8', 'line-width': 4, 'line-opacity': 0.6 } });
+            map.addLayer({ 'id': 'buffer-layer', 'type': 'fill', 'source': 'buffer', 'paint': { 'fill-color': '#3b82f6', 'fill-opacity': 0.1 } });
+            map.addLayer({ 'id': 'buffer-outline', 'type': 'line', 'source': 'buffer', 'paint': { 'line-color': '#3b82f6', 'line-width': 1, 'line-dasharray': [5, 5] } });
+            map.addLayer({ 'id': 'route-layer', 'type': 'line', 'source': 'route', 'layout': { 'line-join': 'round', 'line-cap': 'round' }, 'paint': { 'line-color': '#f59e0b', 'line-width': 6, 'line-opacity': 0.9 } });
+            map.addLayer({ 'id': 'hotels-layer', 'type': 'circle', 'source': 'hotels', 'paint': { 'circle-radius': 8, 'circle-color': '#3b82f6', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff', 'circle-pitch-alignment': 'map' } });
+            map.addLayer({ 'id': 'points-layer', 'type': 'circle', 'source': 'points', 'paint': { 'circle-radius': 10, 'circle-color': ['get', 'color'], 'circle-stroke-width': 3, 'circle-stroke-color': '#fff', 'circle-pitch-alignment': 'map' } });
 
-            // Layer for the buffer (DRAPED)
-            map.addLayer({
-                'id': 'buffer-layer',
-                'type': 'fill',
-                'source': 'buffer',
-                'paint': { 'fill-color': '#3b82f6', 'fill-opacity': 0.1 }
-            });
-            map.addLayer({
-                'id': 'buffer-outline',
-                'type': 'line',
-                'source': 'buffer',
-                'paint': { 'line-color': '#3b82f6', 'line-width': 1, 'line-dasharray': [5, 5] }
-            });
-
-            // Layer for the route (DRAPED)
-            map.addLayer({
-                'id': 'route-layer',
-                'type': 'line',
-                'source': 'route',
-                'layout': { 'line-join': 'round', 'line-cap': 'round' },
-                'paint': { 'line-color': '#f59e0b', 'line-width': 6, 'line-opacity': 0.9 }
-            });
-
-            // Layer for Hotels (POIs) - Using Circles for draping effect
-            map.addLayer({
-                'id': 'hotels-layer',
-                'type': 'circle',
-                'source': 'hotels',
-                'paint': {
-                    'circle-radius': 8,
-                    'circle-color': '#3b82f6',
-                    'circle-stroke-width': 2,
-                    'circle-stroke-color': '#fff',
-                    'circle-pitch-alignment': 'map'
-                }
-            });
-
-            // Layer for Start/End selection points
-            map.addLayer({
-                'id': 'points-layer',
-                'type': 'circle',
-                'source': 'points',
-                'paint': {
-                    'circle-radius': 10,
-                    'circle-color': ['get', 'color'],
-                    'circle-stroke-width': 3,
-                    'circle-stroke-color': '#fff',
-                    'circle-pitch-alignment': 'map'
-                }
-            });
-
-            loadTrailsInView();
-            loadPeaksInView();
+            loadTrailsInView(); loadPeaksInView(); renderSavedRoutes();
         });
 
         function updateTrailsStyle() {
-            map.setPaintProperty('trails-layer', 'line-color', [
-                'case', 
-                ['==', ['get', 'id'], activeTrailId], '#3b82f6',
-                ['==', ['get', 'id'], hoveredTrailId], '#64748b',
-                '#94a3b8'
-            ]);
-            map.setPaintProperty('trails-layer', 'line-width', [
-                'case', 
-                ['==', ['get', 'id'], activeTrailId], 8,
-                ['==', ['get', 'id'], hoveredTrailId], 6,
-                4
-            ]);
-            map.setPaintProperty('trails-layer', 'line-opacity', [
-                'case', 
-                ['!=', activeTrailId, null],
-                ['case', ['==', ['get', 'id'], activeTrailId], 1, 0.2],
-                ['case', ['==', ['get', 'id'], hoveredTrailId], 0.9, 0.6]
-            ]);
+            map.setPaintProperty('trails-layer', 'line-color', ['case', ['==', ['get', 'id'], activeTrailId], '#3b82f6', ['==', ['get', 'id'], hoveredTrailId], '#64748b', '#94a3b8']);
+            map.setPaintProperty('trails-layer', 'line-width', ['case', ['==', ['get', 'id'], activeTrailId], 8, ['==', ['get', 'id'], hoveredTrailId], 6, 4]);
+            map.setPaintProperty('trails-layer', 'line-opacity', ['case', ['!=', activeTrailId, null], ['case', ['==', ['get', 'id'], activeTrailId], 1, 0.2], ['case', ['==', ['get', 'id'], hoveredTrailId], 0.9, 0.6]]);
         }
 
         async function loadTrailsInView() {
             if (activeTrailId || map.getZoom() < 11) return;
             const bounds = map.getBounds();
             const url = `/get-trails-in-view?min_lat=${bounds.getSouth()}&min_lon=${bounds.getWest()}&max_lat=${bounds.getNorth()}&max_lon=${bounds.getEast()}`;
-            
-            try {
-                const data = await fetchAPI(url);
-                map.getSource('trails').setData(data);
-                updateTrailsStyle();
-            } catch (e) { console.error("Error loading trails:", e); }
+            try { const data = await fetchAPI(url); map.getSource('trails').setData(data); updateTrailsStyle(); } catch (e) {}
         }
 
         async function loadPeaksInView() {
             if (map.getZoom() < 12) return;
             const bounds = map.getBounds();
             const query = `[out:json][timeout:25];node["natural"="peak"]["wikipedia"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});out body;`;
-            const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-
             try {
-                const res = await fetch(url);
+                const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
                 const data = await res.json();
-                peakMarkers.forEach(m => m.remove());
-                peakMarkers = [];
+                peakMarkers.forEach(m => m.remove()); peakMarkers = [];
                 data.elements.forEach(node => {
                     if (node.tags && node.tags.name && node.tags.ele) {
-                        const el = document.createElement('div');
-                        el.className = 'peak-marker';
-                        el.innerHTML = `🏔️<br>${node.tags.name}<br>${node.tags.ele}m`;
-                        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat([node.lon, node.lat]).addTo(map);
-                        peakMarkers.push(marker);
+                        const el = document.createElement('div'); el.className = 'peak-marker'; el.innerHTML = `🏔️<br>${node.tags.name}<br>${node.tags.ele}m`;
+                        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat([node.lon, node.lat]).addTo(map); peakMarkers.push(marker);
                     }
                 });
-            } catch (e) { console.error("Overpass error:", e); }
+            } catch (e) {}
         }
 
-        map.on('moveend', () => {
-            loadTrailsInView();
-            loadPeaksInView();
-        });
-
-        map.on('mousemove', 'trails-layer', (e) => {
-            if (e.features.length > 0) {
-                const newHoveredId = e.features[0].properties.id;
-                if (hoveredTrailId !== newHoveredId) {
-                    hoveredTrailId = newHoveredId;
-                    updateTrailsStyle();
-                }
-            }
-        });
-
-        map.on('mouseleave', 'trails-layer', () => {
-            if (hoveredTrailId !== null) {
-                hoveredTrailId = null;
-                updateTrailsStyle();
-            }
-        });
+        map.on('moveend', () => { loadTrailsInView(); loadPeaksInView(); });
+        map.on('mousemove', 'trails-layer', (e) => { if (e.features.length > 0) { const newHoveredId = e.features[0].properties.id; if (hoveredTrailId !== newHoveredId) { hoveredTrailId = newHoveredId; updateTrailsStyle(); } } });
+        map.on('mouseleave', 'trails-layer', () => { if (hoveredTrailId !== null) { hoveredTrailId = null; updateTrailsStyle(); } });
 
         map.on('click', 'trails-layer', async (e) => {
             const feature = e.features[0];
             if (!activeTrailId) {
-                activeTrailId = feature.properties.id;
-                updateTrailsStyle();
-                document.getElementById('status-text').innerHTML = `<b>${feature.properties.name}</b><br>Click the line to set <b>Start</b>.`;
+                activeTrailId = feature.properties.id; activeTrailName = feature.properties.name || "Unnamed Trail";
+                updateTrailsStyle(); document.getElementById('status-text').innerHTML = `<b>${activeTrailName}</b><br>Click the line to set <b>Start</b>.`;
             } else {
-                const latlng = e.lngLat;
-                const data = await fetchAPI(`/get-nearest-node-on-trail?lat=${latlng.lat}&lon=${latlng.lng}&trail_id=${activeTrailId}`);
-                
-                let points = map.getSource('points')._data || { type: 'FeatureCollection', features: [] };
-                
+                const data = await fetchAPI(`/get-nearest-node-on-trail?lat=${e.lngLat.lat}&lon=${e.lngLat.lng}&trail_id=${activeTrailId}`);
+                let ptsSource = map.getSource('points'); let points = ptsSource._data || { type: 'FeatureCollection', features: [] };
                 if (!startPt) {
-                    startPt = data;
-                    points.features.push({ type: 'Feature', properties: { color: '#10b981' }, geometry: { type: 'Point', coordinates: [data.lon, data.lat] } });
-                    map.getSource('points').setData(points);
-                    document.getElementById('status-text').innerHTML = `<b>Start set.</b> Click elsewhere on the trail to set End.`;
+                    startPt = data; points.features.push({ type: 'Feature', properties: { color: '#10b981' }, geometry: { type: 'Point', coordinates: [data.lon, data.lat] } });
+                    ptsSource.setData(points); document.getElementById('status-text').innerHTML = `<b>Start set.</b> Click elsewhere on the trail to set End.`;
                 } else if (!endPt) {
-                    endPt = data;
-                    points.features.push({ type: 'Feature', properties: { color: '#ef4444' }, geometry: { type: 'Point', coordinates: [data.lon, data.lat] } });
-                    map.getSource('points').setData(points);
-                    calculateRoute();
+                    endPt = data; points.features.push({ type: 'Feature', properties: { color: '#ef4444' }, geometry: { type: 'Point', coordinates: [data.lon, data.lat] } });
+                    ptsSource.setData(points); calculateRoute();
                 }
             }
         });
 
         async function calculateRoute() {
-            document.getElementById('status-text').innerHTML = `Calculating 3D Route...`;
             const data = await fetchAPI(`/get-route?start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&trail_id=${activeTrailId}&alt=${isAltPath}`);
-            
-            currentRouteGeoJSON = data.geojson;
+            currentRouteGeoJSON = data.geojson; currentRouteStats = data.stats;
             map.getSource('route').setData(data.geojson);
-
             if (data.geojson.features.length) {
                 const coordinates = data.geojson.features[0].geometry.coordinates;
                 const bounds = coordinates.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
                 map.fitBounds(bounds, { padding: 50, pitch: 70 });
             }
-
             document.getElementById('status-text').innerHTML = `Route Generated!`;
             document.getElementById('route-summary').style.display = 'block';
             document.getElementById('stat-list').innerHTML = `Time: <b>${data.stats.est_duration_min} min</b><br>Distance: <b>${(data.stats.actual_dist / 1000).toFixed(1)} km</b><br>Climb: <b>${Math.round(data.stats.elevation_gain)} m</b>`;
-
-            const switchBtn = document.getElementById('switch-side');
-            if (data.is_loop) { 
-                switchBtn.style.display = 'block'; 
-                switchBtn.onclick = () => { isAltPath = !isAltPath; calculateRoute(); }; 
-            } else {
-                switchBtn.style.display = 'none';
-            }
-
-            updateBuffer();
-            fetchHotels();
-            fetchWeather(endPt.lat, endPt.lon);
-            fetchPhoto(endPt.lat, endPt.lon);
-            fetchSunData(endPt.lat, endPt.lon);
-            
-            // 🚀 Add the Elevation Graph!
+            const sb = document.getElementById('switch-side');
+            if (data.is_loop) { sb.style.display = 'block'; sb.onclick = () => { isAltPath = !isAltPath; calculateRoute(); }; } else { sb.style.display = 'none'; }
+            updateBuffer(); fetchHotels(); fetchWeather(endPt.lat, endPt.lon); fetchPhoto(endPt.lat, endPt.lon); fetchSunData(endPt.lat, endPt.lon);
             buildElevationProfile(data.geojson);
         }
 
-        function updateBuffer() {
-            if (!currentRouteGeoJSON) return;
-            const radius = document.getElementById('radiusSlider').value;
-            const buffered = turf.buffer(currentRouteGeoJSON, radius / 1000, {units: 'kilometers'});
-            map.getSource('buffer').setData(buffered);
-        }
-
-        async function fetchHotels() {
-            const radius = document.getElementById('radiusSlider').value;
-            const hotels = await fetchAPI(`/get-hotels?trail_id=${activeTrailId}&start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&alt=${isAltPath}&radius=${radius}`);
-            
-            // Update Map Source for Draping
-            const hotelGeoJSON = {
-                type: 'FeatureCollection',
-                features: hotels.map(h => ({
-                    type: 'Feature',
-                    properties: h,
-                    geometry: { type: 'Point', coordinates: [h.longitude, h.latitude] }
-                }))
-            };
-            map.getSource('hotels').setData(hotelGeoJSON);
-
-            document.getElementById('hotel-box').style.display = hotels.length ? 'block' : 'none';
-            let html = '';
-            hotels.forEach(h => {
-                const img = h.image_url || `https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=300&q=80`;
-                html += `
-                    <div class="hotel-card" onclick="map.flyTo({center: [${h.longitude}, ${h.latitude}], zoom: 15, pitch: 60});">
-                        <img src="${img}" class="hotel-img" onerror="this.src='https://via.placeholder.com/300x140?text=No+Image+Available'">
-                        <div class="hotel-content">
-                            <div class="hotel-title">${h.name}</div>
-                            <div style="font-size:0.8rem; color:#666; margin-bottom:8px;">
-                                ${getCategoryHtml(h.category)} <span>\u2022</span> ${h.dist}m away
-                            </div>
-                            <div class="hotel-actions">
-                                ${h.phone ? `<a href="tel:${h.phone}" class="action-btn">Call</a>` : ''}
-                                ${h.website ? `<a href="${h.website}" target="_blank" class="action-btn">Website</a>` : ''}
-                            </div>
-                        </div>
-                    </div>`;
-            });
-            document.getElementById('hotel-list').innerHTML = html;
-        }
-
-        function getCategoryHtml(cat) {
-            if (!cat || cat === "Not categorized") return '';
-            const count = parseInt(cat.replace(/\D/g, '')) || 0;
-            const icon = cat.toLowerCase().includes('sun') ? '\u2600\uFE0F' : (cat.toLowerCase().includes('flower') ? '\uD83C\uDF3B' : '\u2B50');
-            return '<span style="color: #f59e0b;">' + icon.repeat(count) + '</span>';
-        }
-
-        async function fetchWeather(lat, lon) {
-            document.getElementById('weather-widget').style.display = 'block';
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                const temp = data.current_weather.temperature;
-                const wind = data.current_weather.windspeed;
-                document.getElementById('weather-data').innerHTML = `<span style="font-size: 1.2rem;">🌡️ ${temp}°C</span><br>💨 Wind: ${wind} km/h`;
-            } catch(e) { document.getElementById('weather-data').innerText = "Weather unavailable."; }
-        }
-
-        function downloadGPX() {
-            if (!currentRouteGeoJSON) return;
-            const coordinates = currentRouteGeoJSON.features[0].geometry.coordinates;
-            let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Peak Explorer" xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg>';
-            coordinates.forEach(coord => { gpx += `<trkpt lat="${coord[1]}" lon="${coord[0]}"></trkpt>`; });
-            gpx += '</trkseg></trk></gpx>';
-            const dataStr = "data:text/xml;charset=utf-8," + encodeURIComponent(gpx);
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "route.gpx");
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-        }
-
-        document.getElementById('radiusSlider').oninput = function() {
-            document.getElementById('radiusLabel').innerText = this.value;
-            if (currentRouteGeoJSON) { updateBuffer(); fetchHotels(); }
-        };
-
-        document.getElementById('download-gpx').onclick = downloadGPX;
-
-        // Add Enter key support for search
-        document.getElementById('search-input').addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') searchLocation();
-        });
-
-        map.on('mouseenter', 'trails-layer', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'trails-layer', () => { map.getCanvas().style.cursor = ''; });
-        map.on('mouseenter', 'hotels-layer', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'hotels-layer', () => { map.getCanvas().style.cursor = ''; });
-        
-        map.on('click', 'hotels-layer', (e) => {
-            const props = e.features[0].properties;
-            new mapboxgl.Popup()
-                .setLngLat(e.lngLat)
-                .setHTML(`<strong>${props.name}</strong><br>${props.dist}m away`)
-                .addTo(map);
-        });
-
-        // Nominatim Search Function
-        async function searchLocation() {
-            const query = document.getElementById('search-input').value;
-            if (!query) return;
-            
-            document.getElementById('search-input').value = "Flying...";
-            
-            // We append "South Tyrol, Italy" to heavily bias the search to your specific region
-            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)},South Tyrol,Italy&format=json&limit=1`;
-            
-            try {
-                const res = await fetch(url);
-                const data = await res.json();
-                
-                if(data.length > 0) {
-                    const lat = parseFloat(data[0].lat);
-                    const lon = parseFloat(data[0].lon);
-                    
-                    // Fly the 3D Mapbox camera to the result
-                    map.flyTo({ center: [lon, lat], zoom: 13, pitch: 65, duration: 3000 });
-                    document.getElementById('search-input').value = "";
-                } else {
-                    document.getElementById('search-input').value = "Location not found!";
-                }
-            } catch(e) {
-                console.error("Search failed", e);
-                document.getElementById('search-input').value = "Error during search";
-            }
-        }
-
-        // Wikimedia Photo Fetcher
-        async function fetchPhoto(lat, lon) {
-            // Searches for photos within 1000 meters of the coordinates
-            const url = `https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=${lat}|${lon}&ggsradius=1000&ggsnamespace=6&prop=imageinfo&iiprop=url&format=json&origin=*`;
-            
-            try {
-                const res = await fetch(url);
-                const data = await res.json();
-                const pages = data.query?.pages;
-                
-                if (pages) {
-                    // Grab the first image result
-                    const firstPage = Object.values(pages)[0];
-                    const imgUrl = firstPage.imageinfo[0].url;
-                    
-                    document.getElementById('location-photo').src = imgUrl;
-                    document.getElementById('photo-widget').style.display = 'block';
-                } else {
-                    document.getElementById('photo-widget').style.display = 'none';
-                }
-            } catch(e) { 
-                console.log("No photo found."); 
-                document.getElementById('photo-widget').style.display = 'none';
-            }
-        }
-
-        // Sunrise-Sunset Fetcher
         async function fetchSunData(lat, lon) {
-            const url = `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`;
             try {
-                const res = await fetch(url);
+                const res = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`);
                 const data = await res.json();
                 const sunsetDate = new Date(data.results.sunset);
                 const timeString = sunsetDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                document.getElementById('sun-text').innerHTML = `⚠️ <b>Safety Warning:</b> Sunset today is at ${timeString}. Ensure you complete your hike before dark!`;
+                document.getElementById('sun-text').innerHTML = `⚠️ <b>Safety Warning:</b> Sunset today is at ${timeString}.`;
                 document.getElementById('sun-widget').style.display = 'block';
-            } catch(e) { console.error("Could not fetch sun data", e); }
+            } catch(e) {}
         }
 
         async function buildElevationProfile(geojson) {
             const coordinates = geojson.features[0].geometry.coordinates;
-            const numPoints = 50;
-            const step = Math.max(1, Math.floor(coordinates.length / numPoints));
-            const sampledCoords = [];
-            for (let i = 0; i < coordinates.length; i += step) {
-                sampledCoords.push(coordinates[i]);
-            }
-            if (sampledCoords[sampledCoords.length - 1] !== coordinates[coordinates.length - 1]) {
-                sampledCoords.push(coordinates[coordinates.length - 1]);
-            }
-            const lats = sampledCoords.map(c => c[1]).join(',');
-            const lons = sampledCoords.map(c => c[0]).join(',');
+            const numPoints = 50; const step = Math.max(1, Math.floor(coordinates.length / numPoints));
+            const sampled = []; for (let i = 0; i < coordinates.length; i += step) sampled.push(coordinates[i]);
+            if (sampled[sampled.length - 1] !== coordinates[coordinates.length - 1]) sampled.push(coordinates[coordinates.length - 1]);
+            const lats = sampled.map(c => c[1]).join(','); const lons = sampled.map(c => c[0]).join(',');
             try {
                 const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`);
-                const data = await res.json();
-                const elevations = data.elevation;
-                let totalClimb = 0;
-                for (let i = 1; i < elevations.length; i++) {
-                    const diff = elevations[i] - elevations[i - 1];
-                    if (diff > 0) totalClimb += diff;
-                }
+                const data = await res.json(); const elevations = data.elevation;
+                let totalClimb = 0; for (let i = 1; i < elevations.length; i++) { const diff = elevations[i] - elevations[i - 1]; if (diff > 0) totalClimb += diff; }
                 document.getElementById('stat-list').innerHTML += `<br>Calculated Climb: <b>${Math.round(totalClimb)} m</b>`;
                 drawChart(elevations);
-            } catch (e) { console.error("Failed to fetch elevation data", e); }
+            } catch (e) {}
         }
 
-        function drawChart(elevationData) {
+        function drawChart(data) {
             const ctx = document.getElementById('elevationChart').getContext('2d');
             if (elevationChartInstance) elevationChartInstance.destroy();
-            const labels = elevationData.map((_, index) => index);
             elevationChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Elevation (m)',
-                        data: elevationData,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                        borderWidth: 2,
-                        fill: true,
-                        pointRadius: 0,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { display: false },
-                        y: { 
-                            title: { display: true, text: 'Meters' },
-                            suggestedMin: Math.min(...elevationData) - 50,
-                            suggestedMax: Math.max(...elevationData) + 50
-                        }
-                    },
-                    interaction: { mode: 'index', intersect: false }
-                }
+                type: 'line', data: { labels: data.map((_, i) => i), datasets: [{ label: 'Elevation (m)', data: data, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.2)', borderWidth: 2, fill: true, pointRadius: 0, tension: 0.4 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { suggestedMin: Math.min(...data) - 50, suggestedMax: Math.max(...data) + 50 } }, interaction: { mode: 'index', intersect: false } }
             });
         }
+
+        function toggleRightPane() { document.getElementById('right-pane').classList.toggle('collapsed'); }
+        function saveCurrentRoute() {
+            if (!currentRouteGeoJSON) return;
+            savedRoutes.push({ id: Date.now(), name: activeTrailName, geojson: currentRouteGeoJSON, stats: currentRouteStats, center: map.getCenter(), pitch: map.getPitch(), bearing: map.getBearing() });
+            localStorage.setItem('tyrol_saved_routes', JSON.stringify(savedRoutes)); renderSavedRoutes();
+            document.getElementById('right-pane').classList.remove('collapsed');
+        }
+        function deleteSavedRoute(id, e) { e.stopPropagation(); savedRoutes = savedRoutes.filter(r => r.id !== id); localStorage.setItem('tyrol_saved_routes', JSON.stringify(savedRoutes)); renderSavedRoutes(); }
+        function loadSavedRoute(id) {
+            const r = savedRoutes.find(r => r.id === id); if (!r) return;
+            activeTrailName = r.name; currentRouteGeoJSON = r.geojson; currentRouteStats = r.stats;
+            map.getSource('route').setData(r.geojson); map.flyTo({ center: r.center, pitch: r.pitch, bearing: r.bearing, zoom: 13 });
+            document.getElementById('route-summary').style.display = 'block';
+            document.getElementById('stat-list').innerHTML = `Time: <b>${r.stats.est_duration_min} min</b><br>Distance: <b>${(r.stats.actual_dist / 1000).toFixed(1)} km</b><br>Climb: <b>${Math.round(r.stats.elevation_gain)} m</b>`;
+            document.getElementById('status-text').innerHTML = `<b>${r.name}</b> (Loaded from Collection)`;
+        }
+        function renderSavedRoutes() {
+            const list = document.getElementById('saved-list');
+            if (savedRoutes.length === 0) { list.innerHTML = '<div style="font-size: 0.85rem; color: #94a3b8; text-align: center; margin-top: 20px;">No saved routes yet.</div>'; return; }
+            list.innerHTML = savedRoutes.map(r => `<div class="saved-route" onclick="loadSavedRoute(${r.id})"><button class="delete-route" onclick="deleteSavedRoute(${r.id}, event)">×</button><div class="saved-route-title">${r.name}</div><div class="saved-route-stats">${(r.stats.actual_dist/1000).toFixed(1)}km • ${r.stats.est_duration_min}min</div></div>`).join('');
+        }
+
+        function updateBuffer() { if (!currentRouteGeoJSON) return; const radius = document.getElementById('radiusSlider').value; const buffered = turf.buffer(currentRouteGeoJSON, radius / 1000, {units: 'kilometers'}); map.getSource('buffer').setData(buffered); }
+        async function fetchHotels() {
+            const radius = document.getElementById('radiusSlider').value;
+            const hotels = await fetchAPI(`/get-hotels?trail_id=${activeTrailId}&start_lat=${startPt.lat}&start_lon=${startPt.lon}&end_lat=${endPt.lat}&end_lon=${endPt.lon}&alt=${isAltPath}&radius=${radius}`);
+            map.getSource('hotels').setData({ type: 'FeatureCollection', features: hotels.map(h => ({ type: 'Feature', properties: h, geometry: { type: 'Point', coordinates: [h.longitude, h.latitude] } })) });
+            document.getElementById('hotel-box').style.display = hotels.length ? 'block' : 'none';
+            let html = ''; hotels.forEach(h => {
+                const img = h.image_url || `https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=300&q=80`;
+                html += `<div class="hotel-card" onclick="map.flyTo({center: [${h.longitude}, ${h.latitude}], zoom: 15, pitch: 60});"><img src="${img}" class="hotel-img" onerror="this.src='https://via.placeholder.com/300x140?text=No+Image+Available'"><div class="hotel-content"><div class="hotel-title">${h.name}</div><div style="font-size:0.8rem; color:#666; margin-bottom:8px;">${getCategoryHtml(h.category)} <span>•</span> ${h.dist}m away</div><div class="hotel-actions">${h.phone ? `<a href="tel:${h.phone}" class="action-btn">Call</a>` : ''}${h.website ? `<a href="${h.website}" target="_blank" class="action-btn">Website</a>` : ''}</div></div></div>`;
+            });
+            document.getElementById('hotel-list').innerHTML = html;
+        }
+        function getCategoryHtml(cat) { if (!cat || cat === "Not categorized") return ''; const count = parseInt(cat.replace(/\D/g, '')) || 0; const icon = cat.toLowerCase().includes('sun') ? '☀️' : (cat.toLowerCase().includes('flower') ? '🌻' : '⭐'); return '<span style="color: #f59e0b;">' + icon.repeat(count) + '</span>'; }
+        async function fetchWeather(lat, lon) { document.getElementById('weather-widget').style.display = 'block'; try { const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`); const data = await response.json(); document.getElementById('weather-data').innerHTML = `<span style="font-size: 1.2rem;">🌡️ ${data.current_weather.temperature}°C</span><br>💨 Wind: ${data.current_weather.windspeed} km/h`; } catch(e) {} }
+        function downloadGPX() { if (!currentRouteGeoJSON) return; const coords = currentRouteGeoJSON.features[0].geometry.coordinates; let gpx = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Peak Explorer" xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg>'; coords.forEach(c => { gpx += `<trkpt lat="${c[1]}" lon="${c[0]}"></trkpt>`; }); gpx += '</trkseg></trk></gpx>'; const dataStr = "data:text/xml;charset=utf-8," + encodeURIComponent(gpx); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "route.gpx"); document.body.appendChild(dl); dl.click(); dl.remove(); }
+        async function searchLocation() { const query = document.getElementById('search-input').value; if (!query) return; document.getElementById('search-input').value = "Flying..."; try { const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)},South Tyrol,Italy&format=json&limit=1`); const data = await res.json(); if(data.length > 0) { map.flyTo({ center: [parseFloat(data[0].lon), parseFloat(data[0].lat)], zoom: 13, pitch: 65, duration: 3000 }); document.getElementById('search-input').value = ""; } else { document.getElementById('search-input').value = "Location not found!"; } } catch(e) {} }
+        async function fetchPhoto(lat, lon) { try { const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=${lat}|${lon}&ggsradius=1000&ggsnamespace=6&prop=imageinfo&iiprop=url&format=json&origin=*`); const data = await res.json(); const pages = data.query?.pages; if (pages) { const firstPage = Object.values(pages)[0]; document.getElementById('location-photo').src = firstPage.imageinfo[0].url; document.getElementById('photo-widget').style.display = 'block'; } else { document.getElementById('photo-widget').style.display = 'none'; } } catch(e) { document.getElementById('photo-widget').style.display = 'none'; } }
+
+        document.getElementById('save-route').onclick = saveCurrentRoute; document.getElementById('download-gpx').onclick = downloadGPX; document.getElementById('search-input').addEventListener('keyup', (e) => { if (e.key === 'Enter') searchLocation(); });
+        document.getElementById('radiusSlider').oninput = function() { document.getElementById('radiusLabel').innerText = this.value; if (currentRouteGeoJSON) { updateBuffer(); fetchHotels(); } };
+        map.on('mouseenter', 'trails-layer', () => { map.getCanvas().style.cursor = 'pointer'; }); map.on('mouseleave', 'trails-layer', () => { map.getCanvas().style.cursor = ''; });
+        map.on('mouseenter', 'hotels-layer', () => { map.getCanvas().style.cursor = 'pointer'; }); map.on('mouseleave', 'hotels-layer', () => { map.getCanvas().style.cursor = ''; });
+        map.on('click', 'hotels-layer', (e) => { const props = e.features[0].properties; new mapboxgl.Popup().setLngLat(e.lngLat).setHTML(`<strong>${props.name}</strong><br>${props.dist}m away`).addTo(map); });
     </script>
 </body>
 </html>
