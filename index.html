@@ -269,21 +269,27 @@
             try { const data = await fetchAPI(url); map.getSource('trails').setData(data); updateTrailsStyle(); } catch (e) {}
         }
 
+        let peakTimer = null;
         async function loadPeaksInView() {
             if (map.getZoom() < 12) return;
-            const bounds = map.getBounds();
-            const query = `[out:json][timeout:25];node["natural"="peak"]["wikipedia"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});out body;`;
-            try {
-                const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
-                const data = await res.json();
-                peakMarkers.forEach(m => m.remove()); peakMarkers = [];
-                data.elements.forEach(node => {
-                    if (node.tags && node.tags.name && node.tags.ele) {
-                        const el = document.createElement('div'); el.className = 'peak-marker'; el.innerHTML = `🏔️<br>${node.tags.name}<br>${node.tags.ele}m`;
-                        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat([node.lon, node.lat]).addTo(map); peakMarkers.push(marker);
-                    }
-                });
-            } catch (e) {}
+            
+            clearTimeout(peakTimer);
+            peakTimer = setTimeout(async () => {
+                const bounds = map.getBounds();
+                const query = `[out:json][timeout:25];node["natural"="peak"]["wikipedia"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});out body;`;
+                try {
+                    const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+                    if (res.status === 429) return; // Silent skip if rate limited
+                    const data = await res.json();
+                    peakMarkers.forEach(m => m.remove()); peakMarkers = [];
+                    data.elements.forEach(node => {
+                        if (node.tags && node.tags.name && node.tags.ele) {
+                            const el = document.createElement('div'); el.className = 'peak-marker'; el.innerHTML = `🏔️<br>${node.tags.name}<br>${node.tags.ele}m`;
+                            const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat([node.lon, node.lat]).addTo(map); peakMarkers.push(marker);
+                        }
+                    });
+                } catch (e) {}
+            }, 1000); // Wait 1 second after move ends
         }
 
         map.on('moveend', () => { loadTrailsInView(); loadPeaksInView(); });
