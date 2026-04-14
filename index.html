@@ -58,18 +58,6 @@
         /* Toggle Button */
         #pane-toggle { position: absolute; right: 20px; top: 20px; z-index: 1001; background: #fff; color: var(--primary); border: 1px solid var(--border); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); cursor: pointer; }
 
-        /* Peak Marker Styling */
-        .peak-marker {
-            color: #000;
-            font-size: 11px;
-            font-weight: 900;
-            text-transform: uppercase;
-            text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0px 2px 4px rgba(0,0,0,0.3);
-            pointer-events: none;
-            text-align: center;
-            line-height: 1.2;
-        }
-
         #photo-widget { display: none; margin-top: 15px; }
 
         /* Hotel Card Styling */
@@ -218,7 +206,6 @@
         let hoveredTrailId = null;
         let startPt = null; let endPt = null;
         let isAltPath = false;
-        let peakMarkers = [];
         let currentRouteGeoJSON = null;
         let currentRouteStats = null;
         let activeTrailName = "";
@@ -251,7 +238,7 @@
             map.addLayer({ 'id': 'hotels-layer', 'type': 'circle', 'source': 'hotels', 'paint': { 'circle-radius': 8, 'circle-color': '#3b82f6', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff', 'circle-pitch-alignment': 'map' } });
             map.addLayer({ 'id': 'points-layer', 'type': 'circle', 'source': 'points', 'paint': { 'circle-radius': 10, 'circle-color': ['get', 'color'], 'circle-stroke-width': 3, 'circle-stroke-color': '#fff', 'circle-pitch-alignment': 'map' } });
 
-            loadTrailsInView(); loadPeaksInView(); renderSavedRoutes();
+            loadTrailsInView(); renderSavedRoutes();
         });
 
         function updateTrailsStyle() {
@@ -269,30 +256,7 @@
             try { const data = await fetchAPI(url); map.getSource('trails').setData(data); updateTrailsStyle(); } catch (e) {}
         }
 
-        let peakTimer = null;
-        async function loadPeaksInView() {
-            if (map.getZoom() < 12) return;
-            
-            clearTimeout(peakTimer);
-            peakTimer = setTimeout(async () => {
-                const bounds = map.getBounds();
-                const query = `[out:json][timeout:25];node["natural"="peak"]["wikipedia"](${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()});out body;`;
-                try {
-                    const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
-                    if (res.status === 429) return; // Silent skip if rate limited
-                    const data = await res.json();
-                    peakMarkers.forEach(m => m.remove()); peakMarkers = [];
-                    data.elements.forEach(node => {
-                        if (node.tags && node.tags.name && node.tags.ele) {
-                            const el = document.createElement('div'); el.className = 'peak-marker'; el.innerHTML = `🏔️<br>${node.tags.name}<br>${node.tags.ele}m`;
-                            const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat([node.lon, node.lat]).addTo(map); peakMarkers.push(marker);
-                        }
-                    });
-                } catch (e) {}
-            }, 1000); // Wait 1 second after move ends
-        }
-
-        map.on('moveend', () => { loadTrailsInView(); loadPeaksInView(); });
+        map.on('moveend', () => { loadTrailsInView(); });
         map.on('mousemove', 'trails-layer', (e) => { if (e.features.length > 0) { const newHoveredId = e.features[0].properties.id; if (hoveredTrailId !== newHoveredId) { hoveredTrailId = newHoveredId; updateTrailsStyle(); } } });
         map.on('mouseleave', 'trails-layer', () => { if (hoveredTrailId !== null) { hoveredTrailId = null; updateTrailsStyle(); } });
 
@@ -327,7 +291,7 @@
             document.getElementById('route-summary').style.display = 'block';
             
             const daylightInfo = await fetchSunData(endPt.lat, endPt.lon);
-            document.getElementById('stat-list').innerHTML = `Time: <b>${data.stats.est_duration_min} min</b> ${daylightInfo}<br>Distance: <b>${(data.stats.actual_dist / 1000).toFixed(1)} km</b><br>Climb: <b>${Math.round(data.stats.elevation_gain)} m</b>`;
+            document.getElementById('stat-list').innerHTML = `Time: <b>${data.stats.est_duration_min} min</b> ${daylightInfo}<br>Distance: <b>${(data.stats.actual_dist / 1000).toFixed(1)} km</b>`;
             
             const sb = document.getElementById('switch-side');
             if (data.is_loop) { sb.style.display = 'block'; sb.onclick = () => { isAltPath = !isAltPath; calculateRoute(); }; } else { sb.style.display = 'none'; }
@@ -362,8 +326,6 @@
             try {
                 const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`);
                 const data = await res.json(); const elevations = data.elevation;
-                let totalClimb = 0; for (let i = 1; i < elevations.length; i++) { const diff = elevations[i] - elevations[i - 1]; if (diff > 0) totalClimb += diff; }
-                document.getElementById('stat-list').innerHTML += `<br>Calculated Climb: <b>${Math.round(totalClimb)} m</b>`;
                 drawChart(elevations);
             } catch (e) {}
         }
@@ -420,7 +382,7 @@
             document.getElementById('route-summary').style.display = 'block';
             
             const daylightInfo = await fetchSunData(r.center[1], r.center[0]);
-            document.getElementById('stat-list').innerHTML = `Time: <b>${r.stats.est_duration_min} min</b> ${daylightInfo}<br>Distance: <b>${(r.stats.actual_dist / 1000).toFixed(1)} km</b><br>Climb: <b>${Math.round(r.stats.elevation_gain)} m</b>`;
+            document.getElementById('stat-list').innerHTML = `Time: <b>${r.stats.est_duration_min} min</b> ${daylightInfo}<br>Distance: <b>${(r.stats.actual_dist / 1000).toFixed(1)} km</b>`;
             document.getElementById('status-text').innerHTML = `<b>${r.name}</b> (Loaded from Collection)`;
         }
         function renderSavedRoutes() {

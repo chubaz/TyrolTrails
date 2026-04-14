@@ -1,0 +1,196 @@
+{
+  "Id": "routes-hikingtrails.11426062",
+  "Self": "https://tourism.api.opendatahub.com/v1/ODHActivityPoi/routes-hikingtrails.11426062",
+  "Tags": [
+    {
+      "Id": "other hikes",
+      "Name": "Other hikes",
+      "Self": "https://tourism.api.opendatahub.com/v1/Tag/other hikes",
+      "Type": "ltscategory",
+      "Source": "idm",
+      "TagEntry": null
+    },
+    {
+      "Id": "978F89296ACB4DB4B6BD1C269341802F",
+      "Name": "Hiking",
+      "Self": "https://tourism.api.opendatahub.com/v1/Tag/978F89296ACB4DB4B6BD1C269341802F",
+      "Type": "tagsactivity",
+      "Source": "lts",
+      "TagEntry": null
+    },
+    {
+      "Id": "B702CF3773CF4A47AFEBC291618A7B7E",
+      "Name": "Other hikes",
+      "Self": "https://tourism.api.opendatahub.com/v1/Tag/B702CF3773CF4A47AFEBC291618A7B7E",
+      "Type": "tagsactivity",
+      "Source": "lts",
+      "TagEntry": null
+    },
+    {
+      "Id": "hiking",
+      "Name": "Hiking",
+      "Self": "https://tourism.api.opendatahub.com/v1/Tag/hiking",
+      "Type": "ltscategory",
+      "Source": "idm",
+      "TagEntry": null
+    }
+  ],
+  "Type": null,
+  "AgeTo": null,
+  "Areas": [],
+  "SmgId": null,
+  "_Meta": {
+    "Id": "routes-hikingtrails.11426062",
+    "Type": "odhactivitypoi",
+    "Source": "civis.geoserver",
+    "Reduced": false,
+    "LastUpdate": "2025-08-29T13:17:57.0269373+00:00",
+    "UpdateInfo": {
+      "UpdatedBy": "digiway.hikingtrails.import",
+      "UpdateSource": "http://tourism.importer.opendatahub.com/DIGIWAY/hikingtrails",
+      "UpdateHistory": [
+        {
+          "UpdatedBy": "digiway.hikingtrails.import",
+          "LastUpdate": "2025-08-29T13:17:57.0269373+00:00",
+          "UpdateSource": "http://tourism.importer.opendatahub.com/DIGIWAY/hikingtrails"
+        }
+      ]
+    }
+  },
+  "Active": true,
+  "AreaId": null,
+  "Detail": {
+    "de": {
+      "Title": "",
+      "Header": null,
+      "BaseText": null,
+      "Keywords": null,
+      "Language": "de",
+      "MetaDesc": null,
+      "AuthorTip": null,
+      "IntroText": null,
+      "MetaTitle": null,
+      "SubHeader": null,
+      "SafetyInfo": null,
+      "ParkingInfo": null,
+      "GetThereText": null,
+      "EquipmentInfo": null,
+      "AdditionalText": "",
+      "PublicTransportationInfo": null
+    }
+  },
+  "IsOpen": null,
+  "Number": null,
+  "Source": "civis.geoserver",
+  "TagIds": [
+    "978F89296ACB4DB4B6BD1C269341802F",
+    "hiking",
+    "B702CF3773CF4A47AFEBC291618A7B7E",
+    "other hikes"
+  ],
+  "AgeFrom": null,
+  "AreaIds": null,
+  "GpsInfo": [
+    {
+      "Gpstype": "position",
+      "Altitude": null,
+      "Latitude": 46.739454684,
+      "Longitude": 10.581621737,
+      "AltitudeUnitofMeasure": "m"
+    }
+  ],
+  "LTSTags": null,
+  "Mapping": {
+    "civis.geoserver": {
+      "id": "11426062",
+      "bbox": "[619522.1,5177426,620826.06,5178358.5]",
+      "length_geom": "3193"
+    }
+  },
+  "ODHTags": [],
+  "PoiType": null,
+  "Ratings": null,
+  "SmgTags": null,
+  "SubType": null,
+  "CustomId": null,
+  "GpsTrack": [
+    {
+      "Id": "routes-hikingtrails.11426062",
+      "Type": "Track",
+      "Format": "geojson",
+      "GpxTrackUrl": "https://tourism.api.opendatahub.com/v1/GeoShape/routes-hikingtrails.11426062",
+      "GpxTrackDesc": null
+    }
+  ],
+  "OwnerRid": null,
+  "DishRates": null,
+  "FeetClimb": null,
+  "GpsPoints": {
+    "position": {
+      "Gpstype": "position",
+      "Altitude": null,
+      "Latitude": 46.739454684,
+      "Longitude": 10.581621737,
+      "AltitudeUnitofMeasure": "m"
+    }
+  },
+  "Highlight": null,
+  "OdhActive": false,
+  "Shortname": "",
+  "SmgActive": false,
+  "WayNumber": null,
+  "Difficulty": null,
+  "DistrictId": null,
+  "Exposition": null,
+  "Facilities": null,
+  "HasRentals": null,
+  "IsPrepared": null,
+  "LastChange": "2025-08-29T13:17:57.0269388+00:00",
+  "VideoItems": {},
+  "ChildPoiIds": null,
+  "FirstImport": "2025-08-29T13:17:57.0269386+00:00",
+  "HasLanguage": [
+    "de"
+  ],
+  "IsWithLigth": null,
+  "LicenseInfo": {
+    "Author": "",
+    "License": "Closed",
+    "ClosedData": true,
+    "LicenseHolder": "https://geoservices1.civis.bz.it"
+  },
+  "PoiProperty": {},
+  "PoiServices": null,
+  "PublishedOn": null,
+  "RunToValley": null,
+  "ContactInfos": {},
+  "DistanceInfo": null,
+  "ImageGallery": null,
+  "LocationInfo": null,
+  "MasterPoiIds": null,
+  "AltitudeSumUp": null,
+  "BikeTransport": null,
+  "CategoryCodes": null,
+  "LiftAvailable": null,
+  "DistanceLength": 3193.0,
+  "RelatedContent": null,
+  "SyncUpdateMode": null,
+  "AltitudeSumDown": null,
+  "HasFreeEntrance": null,
+  "OutdooractiveID": null,
+  "CapacityCeremony": null,
+  "CopyrightChecked": null,
+  "DistanceDuration": null,
+  "AdditionalContact": null,
+  "OperationSchedule": null,
+  "AdditionalPoiInfos": {},
+  "AltitudeDifference": null,
+  "MaxSeatingCapacity": null,
+  "AltitudeLowestPoint": null,
+  "ODHActivityPoiTypes": [],
+  "SyncSourceInterface": "civis.geoserver.hikingtrails",
+  "AdditionalProperties": {},
+  "AltitudeHighestPoint": null,
+  "TourismorganizationId": null,
+  "OutdooractiveElevationID": null
+}

@@ -13,9 +13,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+# Explicitly list allowed origins for better compatibility with credentials
+origins = [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "https://starry-cloning-pug.ngrok-free.dev",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], # More permissive for dev
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,11 +56,23 @@ def get_route(start_lat: float, start_lon: float, end_lat: float, end_lon: float
                     FROM raw_trail
                  ),
                  sliced AS (
-                    SELECT CASE WHEN NOT :alt THEN ST_LineSubstring(t.geom, LEAST(p.f1, p.f2), GREATEST(p.f1, p.f2))
-                           ELSE ST_LineMerge(ST_Union(ST_LineSubstring(t.geom, GREATEST(p.f1, p.f2), 1.0), ST_LineSubstring(t.geom, 0.0, LEAST(p.f1, p.f2)))) END as geom,
-                           t.length_m, t.elev, p.is_loop FROM raw_trail t, points p
+                    SELECT 
+                        CASE 
+                            WHEN NOT :alt THEN ST_LineSubstring(t.geom, LEAST(p.f1, p.f2), GREATEST(p.f1, p.f2))
+                            ELSE ST_LineMerge(ST_Union(ST_LineSubstring(t.geom, GREATEST(p.f1, p.f2), 1.0), ST_LineSubstring(t.geom, 0.0, LEAST(p.f1, p.f2))))
+                        END as geom,
+                        CASE 
+                            WHEN NOT :alt THEN (p.f1 > p.f2)
+                            ELSE FALSE -- For loops, the Union/Merge logic might already be complex, but usually alt implies a specific direction
+                        END as should_reverse,
+                        t.length_m, t.elev, p.is_loop 
+                    FROM raw_trail t, points p
                  )
-            SELECT ST_AsText(geom), length_m * ST_Length(geom::geography) / NULLIF(ST_Length((SELECT geom FROM raw_trail)::geography), 0) as sub_len, elev, is_loop FROM sliced
+            SELECT 
+                CASE WHEN should_reverse THEN ST_AsText(ST_Reverse(geom)) ELSE ST_AsText(geom) END,
+                length_m * ST_Length(geom::geography) / NULLIF(ST_Length((SELECT geom FROM raw_trail)::geography), 0) as sub_len, 
+                elev, is_loop 
+            FROM sliced
         """)
         with engine.connect() as conn:
             res = conn.execute(sql, {"tid": trail_id, "slat": start_lat, "slon": start_lon, "elat": end_lat, "elon": end_lon, "alt": alt}).fetchone()
@@ -99,4 +119,4 @@ def get_nearest_node_on_trail(lat: float, lon: float, trail_id: int):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

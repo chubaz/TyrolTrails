@@ -18,7 +18,6 @@ A high-performance 3D geospatial application for discovering hiking trails acros
 * **Precision Routing:** Powered by `pgRouting`, click *anywhere* on a trail line to snap to the nearest vertex and set custom start/end points.
 
 ### ⛰️ Integrated Alpine Services
-* **Peak Explorer:** Automatically identifies and labels prominent mountain peaks in your 3D view using the OpenStreetMap Overpass API.
 * **Live Summit Weather:** Real-time summit weather conditions (temperature and wind speed) fetched dynamically via the Open-Meteo API.
 * **Live View:** Automatically retrieves open-source photographs of your destination peak via Wikimedia Commons.
 * **Safety Warnings:** Calculates exact sunset times for your specific destination to ensure safe hiking planning.
@@ -40,7 +39,7 @@ A high-performance 3D geospatial application for discovering hiking trails acros
 * **Database:** PostgreSQL + PostGIS + pgRouting (Spatial Analysis & Shortest Path calculations)
 * **Data Processing:** GeoPandas, Pandas, Shapely
 * **Frontend:** HTML5, CSS3, JavaScript, Mapbox GL JS v3, Turf.js, Chart.js
-* **External APIs:** ODH South Tyrol, Overpass API, Open-Meteo, Wikimedia Commons, Sunrise-Sunset API
+* **External APIs:** ODH South Tyrol, Open-Meteo, Wikimedia Commons, Sunrise-Sunset API
 
 ---
 
