@@ -1,21 +1,24 @@
+import os
+from dotenv import load_dotenv
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Connect to PostGIS
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/hackathon_db')
+engine = create_engine(DATABASE_URL)
 
 def enrich_trail_with_pois(track_id, distance_meters=2000):
     print(f"Drawing a {distance_meters}m buffer around trail: {track_id}...")
     
-    # The PostGIS Magic! 
-    # ST_DWithin checks if the points fall inside the buffer.
-    # ST_Distance calculates the exact distance to display to the user.
-    sql = f"""
+    # Use parameterized query and ST_DistanceSphere
+    sql = text("""
     SELECT 
         t.name AS trail_name,
         a.name AS hotel_name,
         a.type AS hotel_type,
-        ROUND(ST_Distance(t.geometry::geography, a.geometry::geography)::numeric, 0) AS distance_m,
+        ROUND(ST_DistanceSphere(t.geometry, a.geometry)::numeric, 0) AS distance_m,
         a.latitude,
         a.longitude
     FROM 
@@ -23,16 +26,17 @@ def enrich_trail_with_pois(track_id, distance_meters=2000):
     JOIN 
         accommodations a 
     ON 
-        ST_DWithin(t.geometry::geography, a.geometry::geography, {distance_meters})
+        ST_DWithin(ST_Transform(t.geometry, 3857), ST_Transform(a.geometry, 3857), :dist)
     WHERE 
-        t.track_id = '{track_id}'
+        t.track_id = :tid
     ORDER BY 
         distance_m ASC;
-    """
+    """)
     
     # Execute the query and load results into a Pandas DataFrame
     try:
-        nearby_pois = pd.read_sql(sql, engine)
+        with engine.connect() as conn:
+            nearby_pois = pd.read_sql(sql, conn, params={"tid": track_id, "dist": distance_meters})
         
         if nearby_pois.empty:
             print("No accommodations found within that distance.")

@@ -1,6 +1,10 @@
+import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/hackathon_db')
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
 
 def build_routing_topology():
     print("Preparing the network graph for routing...")

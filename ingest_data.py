@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 import requests
 import geopandas as gpd
 import pandas as pd
@@ -5,9 +7,12 @@ from sqlalchemy import create_engine
 from shapely.geometry import shape
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/hackathon_db")
+
 # Database connection with pooling
 engine = create_engine(
-    'postgresql://postgres:postgres@localhost:5432/hackathon_db',
+    DATABASE_URL,
     pool_pre_ping=True
 )
 

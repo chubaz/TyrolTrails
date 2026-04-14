@@ -1,7 +1,11 @@
+import os
+from dotenv import load_dotenv
 import geopandas as gpd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/hackathon_db')
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
 
 def export_shortest_path():
     print("Calculating route and exporting to GeoJSON...")
@@ -10,7 +14,7 @@ def export_shortest_path():
     start_node = 14
     end_node = 13
     
-    sql = f"""
+    sql = text("""
     SELECT 
         r.seq, 
         t.name AS trail_name,
@@ -18,19 +22,19 @@ def export_shortest_path():
     FROM 
         pgr_dijkstra(
             'SELECT id, source, target, length_m AS cost FROM hiking_trails',
-            {start_node}, 
-            {end_node}, 
+            :start, 
+            :end, 
             directed := false
         ) AS r
     JOIN 
         hiking_trails t ON r.edge = t.id
     ORDER BY 
         r.seq;
-    """
+    """)
     
     try:
         # GeoPandas can read the SQL query directly and parse those ugly hex strings!
-        gdf = gpd.read_postgis(sql, engine, geom_col='geometry')
+        gdf = gpd.read_postgis(sql, engine, geom_col='geometry', params={"start": start_node, "end": end_node})
         
         if gdf.empty:
             print("No path found between those nodes.")

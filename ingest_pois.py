@@ -1,11 +1,16 @@
+import os
+from dotenv import load_dotenv
 import requests
 import pandas as pd
 import geopandas as gpd
 from sqlalchemy import create_engine
 
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 # Database connection with pooling
 engine = create_engine(
-    'postgresql://postgres:postgres@localhost:5432/hackathon_db',
+    DATABASE_URL,
     pool_pre_ping=True
 )
 

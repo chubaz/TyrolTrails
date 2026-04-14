@@ -1,13 +1,18 @@
+import os
+from dotenv import load_dotenv
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
-engine = create_engine('postgresql://postgres:postgres@localhost:5432/hackathon_db')
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
 
 def visual_audit():
     # Load 20 random trails
-    sql = "SELECT name, geometry FROM hiking_trails ORDER BY RANDOM() LIMIT 20"
-    gdf = gpd.read_postgis(sql, engine, geom_col='geometry')
+    sql = text("SELECT name, geometry FROM hiking_trails ORDER BY RANDOM() LIMIT 20")
+    with engine.connect() as conn:
+        gdf = gpd.read_postgis(sql, conn, geom_col='geometry')
     
     if gdf.empty:
         print("Database is empty!")
