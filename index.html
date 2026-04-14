@@ -184,10 +184,16 @@
 
     <div id="map"></div>
 
+    <script src="config.js"></script>
     <script>
-        // Configuration: Replace 'YOUR_MAPBOX_TOKEN' with a real token from account.mapbox.com
-        mapboxgl.accessToken = 'YOUR_MAPBOX_TOKEN'; 
-        const API_BASE = 'YOUR_API_BASE_URL'; 
+        // Use CONFIG if available from config.js (which is ignored by git), otherwise use placeholders
+        const APP_CONFIG = window.CONFIG || {
+            MAPBOX_TOKEN: 'YOUR_MAPBOX_TOKEN',
+            API_BASE: 'YOUR_API_BASE_URL'
+        };
+
+        mapboxgl.accessToken = APP_CONFIG.MAPBOX_TOKEN; 
+        const API_BASE = APP_CONFIG.API_BASE; 
 
         async function fetchAPI(endpoint) {
             const res = await fetch(`${API_BASE}${endpoint}`, {

@@ -15,6 +15,7 @@ __pycache__/
 *$py.class
 
 # Project specific data files (if temporary)
+config.js
 nearby_hotels.json
 shortest_path.geojson
 test_gpx.py
