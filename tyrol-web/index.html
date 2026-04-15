@@ -149,11 +149,6 @@
                     <strong style="color: #2b6cb0;">Summit Weather:</strong>
                     <div id="weather-data">Loading...</div>
                 </div>
-
-                <div id="photo-widget">
-                    <div style="font-size: 0.75rem; color: #6b7280; font-weight: bold; margin-bottom: 5px;">LIVE VIEW</div>
-                    <img id="location-photo" src="" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);">
-                </div>
             </div>
 
             <div id="hotel-box" style="display: none;">
@@ -173,6 +168,15 @@
     </div>
 
     <div id="map"></div>
+
+    <div id="pane-toggle" onclick="toggleRightPane()">📸</div>
+
+    <div id="right-pane" class="collapsed">
+        <div id="photo-widget" style="display: none;">
+            <div style="font-size: 0.75rem; color: #6b7280; font-weight: bold; margin-bottom: 5px;">LIVE VIEW</div>
+            <img id="location-photo" src="" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);">
+        </div>
+    </div>
 
     <script src="../config.js"></script>
     <script>
@@ -213,6 +217,8 @@
         let activeTrailName = "";
         let elevationChartInstance = null;
         let savedRoutes = JSON.parse(localStorage.getItem('tyrol_saved_routes') || '[]');
+        let currentTrailCoords = [];
+        let routePoints = { type: 'FeatureCollection', features: [] };
 
         map.on('style.load', () => {
             map.addSource('mapbox-dem', { 'type': 'raster-dem', 'url': 'mapbox://mapbox.mapbox-terrain-dem-v1', 'tileSize': 512, 'maxzoom': 14 });
@@ -232,6 +238,7 @@
             map.addSource('buffer', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
             map.addSource('hotels', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
             map.addSource('points', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.addSource('wiki-points', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
             map.addLayer({ 'id': 'trails-layer', 'type': 'line', 'source': 'trails', 'layout': { 'line-join': 'round', 'line-cap': 'round' }, 'paint': { 'line-color': '#94a3b8', 'line-width': 4, 'line-opacity': 0.6 } });
             map.addLayer({ 'id': 'buffer-layer', 'type': 'fill', 'source': 'buffer', 'layout': { 'visibility': 'none' }, 'paint': { 'fill-color': '#3b82f6', 'fill-opacity': 0.1 } });
@@ -239,6 +246,7 @@
             map.addLayer({ 'id': 'route-layer', 'type': 'line', 'source': 'route', 'layout': { 'line-join': 'round', 'line-cap': 'round' }, 'paint': { 'line-color': '#f59e0b', 'line-width': 6, 'line-opacity': 0.9 } });
             map.addLayer({ 'id': 'hotels-layer', 'type': 'circle', 'source': 'hotels', 'paint': { 'circle-radius': 8, 'circle-color': '#3b82f6', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff', 'circle-pitch-alignment': 'map' } });
             map.addLayer({ 'id': 'points-layer', 'type': 'circle', 'source': 'points', 'paint': { 'circle-radius': 10, 'circle-color': ['get', 'color'], 'circle-stroke-width': 3, 'circle-stroke-color': '#fff', 'circle-pitch-alignment': 'map' } });
+            map.addLayer({ 'id': 'wiki-layer', 'type': 'circle', 'source': 'wiki-points', 'paint': { 'circle-radius': 8, 'circle-color': '#8b5cf6', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff', 'circle-pitch-alignment': 'map' } });
 
             loadTrailsInView(); renderSavedRoutes();
         });
@@ -264,18 +272,42 @@
 
         map.on('click', 'trails-layer', async (e) => {
             const feature = e.features[0];
-            if (!activeTrailId) {
-                activeTrailId = feature.properties.id; activeTrailName = feature.properties.name || "Unnamed Trail";
-                updateTrailsStyle(); document.getElementById('status-text').innerHTML = `<b>${activeTrailName}</b><br>Click the line to set <b>Start</b>.`;
+            const clickedId = feature.properties.id;
+            
+            // If no trail selected, or if no points set and clicking a DIFFERENT trail, switch selection
+            if (!activeTrailId || (!startPt && !endPt && clickedId !== activeTrailId)) {
+                activeTrailId = clickedId; 
+                activeTrailName = feature.properties.name || "Unnamed Trail";
+                
+                // Get coordinates and zoom to trail
+                currentTrailCoords = feature.geometry.type === 'LineString' ? feature.geometry.coordinates : feature.geometry.coordinates.flat(1);
+                const bounds = new mapboxgl.LngLatBounds();
+                currentTrailCoords.forEach(c => bounds.extend(c));
+                map.fitBounds(bounds, { padding: 50 });
+
+                updateTrailsStyle(); 
+                document.getElementById('status-text').innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span><b>${activeTrailName}</b> selected.<br>Click the line to set <b>Start</b>.</span>
+                        <button onclick="clearRoute()" style="width: auto; padding: 4px 8px; background: #fee2e2; color: #ef4444; font-size: 0.75rem;">Cancel</button>
+                    </div>`;
             } else {
                 const data = await fetchAPI(`/get-nearest-node-on-trail?lat=${e.lngLat.lat}&lon=${e.lngLat.lng}&trail_id=${activeTrailId}`);
-                let ptsSource = map.getSource('points'); let points = ptsSource._data || { type: 'FeatureCollection', features: [] };
+                let ptsSource = map.getSource('points');
                 if (!startPt) {
-                    startPt = data; points.features.push({ type: 'Feature', properties: { color: '#10b981' }, geometry: { type: 'Point', coordinates: [data.lon, data.lat] } });
-                    ptsSource.setData(points); document.getElementById('status-text').innerHTML = `<b>Start set.</b> Click elsewhere on the trail to set End.`;
+                    startPt = data; 
+                    routePoints.features = [{ type: 'Feature', properties: { color: '#10b981' }, geometry: { type: 'Point', coordinates: [data.lon, data.lat] } }];
+                    ptsSource.setData(routePoints); 
+                    document.getElementById('status-text').innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span><b>Start set.</b><br>Click elsewhere on the trail to set <b>End</b>.</span>
+                            <button onclick="clearRoute()" style="width: auto; padding: 4px 8px; background: #fee2e2; color: #ef4444; font-size: 0.75rem;">Cancel</button>
+                        </div>`;
                 } else if (!endPt) {
-                    endPt = data; points.features.push({ type: 'Feature', properties: { color: '#ef4444' }, geometry: { type: 'Point', coordinates: [data.lon, data.lat] } });
-                    ptsSource.setData(points); calculateRoute();
+                    endPt = data; 
+                    routePoints.features.push({ type: 'Feature', properties: { color: '#ef4444' }, geometry: { type: 'Point', coordinates: [data.lon, data.lat] } });
+                    ptsSource.setData(routePoints); 
+                    calculateRoute();
                 }
             }
         });
@@ -307,6 +339,12 @@
                 fetchHotels(); fetchWeather(endPt.lat, endPt.lon); fetchPhoto(endPt.lat, endPt.lon);
                 buildElevationProfile(data.geojson);
             }, 1000);
+        }
+
+        function toggleRightPane(forceOpen = false) {
+            const pane = document.getElementById('right-pane');
+            if (forceOpen) pane.classList.remove('collapsed');
+            else pane.classList.toggle('collapsed');
         }
 
         async function fetchSunData(lat, lon) {
@@ -355,21 +393,22 @@
             document.querySelector(`.tab-btn[onclick*="${tab}"]`).classList.add('active');
             document.getElementById(`${tab}-tab`).classList.add('active');
         }
+function clearRoute() {
+    activeTrailId = null;
+    startPt = null;
+    endPt = null;
+    isAltPath = false;
+    currentRouteGeoJSON = null;
+    currentRouteStats = null;
+    currentTrailCoords = [];
+    routePoints = { type: 'FeatureCollection', features: [] };
 
-        function clearRoute() {
-            activeTrailId = null;
-            startPt = null;
-            endPt = null;
-            isAltPath = false;
-            currentRouteGeoJSON = null;
-            currentRouteStats = null;
-            
-            // Clear map sources
+    // Clear map sources
             if (map.getSource('route')) map.getSource('route').setData({ type: 'FeatureCollection', features: [] });
             if (map.getSource('buffer')) map.getSource('buffer').setData({ type: 'FeatureCollection', features: [] });
             if (map.getSource('hotels')) map.getSource('hotels').setData({ type: 'FeatureCollection', features: [] });
             if (map.getSource('points')) map.getSource('points').setData({ type: 'FeatureCollection', features: [] });
-            
+            if (map.getSource('wiki-points')) map.getSource('wiki-points').setData({ type: 'FeatureCollection', features: [] });            
             // Hide UI components
             document.getElementById('route-summary').style.display = 'none';
             document.getElementById('hotel-box').style.display = 'none';
@@ -539,7 +578,7 @@
             }
         }
 
-        async function fetchPhoto(lat, lon) { try { const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=${lat}|${lon}&ggsradius=1000&ggsnamespace=6&prop=imageinfo&iiprop=url&format=json&origin=*`); const data = await res.json(); const pages = data.query?.pages; if (pages) { const firstPage = Object.values(pages)[0]; document.getElementById('location-photo').src = firstPage.imageinfo[0].url; document.getElementById('photo-widget').style.display = 'block'; } else { document.getElementById('photo-widget').style.display = 'none'; } } catch(e) { document.getElementById('photo-widget').style.display = 'none'; } }
+        async function fetchPhoto(lat, lon) { try { const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=${lat}|${lon}&ggsradius=1000&ggsnamespace=6&prop=imageinfo&iiprop=url&format=json&origin=*`); const data = await res.json(); const pages = data.query?.pages; if (pages) { const firstPage = Object.values(pages)[0]; document.getElementById('location-photo').src = firstPage.imageinfo[0].url; document.getElementById('photo-widget').style.display = 'block'; toggleRightPane(true); } else { document.getElementById('photo-widget').style.display = 'none'; } } catch(e) { document.getElementById('photo-widget').style.display = 'none'; } }
 
         document.getElementById('save-route').onclick = saveCurrentRoute; document.getElementById('download-gpx').onclick = downloadGPX; document.getElementById('search-input').addEventListener('keyup', (e) => { if (e.key === 'Enter') searchLocation(); });
         

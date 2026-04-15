@@ -128,6 +128,31 @@ def get_hotels(trail_id: int, start_lat: float, start_lon: float, end_lat: float
         logger.error(f"Hotels error: {e}")
         return JSONResponse(content=[])
 
+@app.get("/get-stations")
+def get_stations(trail_id: int, start_lat: float, start_lon: float, end_lat: float, end_lon: float, radius: int = 5000, alt: bool = False):
+    try:
+        sql = text("""
+            WITH trail AS (SELECT ST_LineMerge(ST_Collect(geometry)) as geom FROM hiking_trails WHERE id = :tid),
+                 points AS (SELECT ST_LineLocatePoint(t.geom, ST_SetSRID(ST_MakePoint(:slon, :slat), 4326)) as f1, ST_LineLocatePoint(t.geom, ST_SetSRID(ST_MakePoint(:elon, :elat), 4326)) as f2 FROM trail t),
+                 section AS (
+                    SELECT CASE WHEN NOT :alt THEN ST_LineSubstring(t.geom, LEAST(p.f1, p.f2), GREATEST(p.f1, p.f2))
+                           ELSE ST_LineMerge(ST_Union(ST_LineSubstring(t.geom, GREATEST(p.f1, p.f2), 1.0), ST_LineSubstring(t.geom, 0.0, LEAST(p.f1, p.f2)))) END as geom
+                    FROM trail t, points p
+                 )
+            SELECT m.name, m.temperature, m.latitude, m.longitude,
+                   ROUND(ST_DistanceSphere((SELECT geom FROM section), m.geometry)::numeric, 0) as dist
+            FROM measuring_points m
+            WHERE ST_DWithin(ST_Transform((SELECT geom FROM section), 3857), ST_Transform(m.geometry, 3857), :radius)
+            ORDER BY dist ASC LIMIT 10;
+        """)
+        with engine.connect() as conn:
+            df = pd.read_sql(sql, conn, params={"tid": trail_id, "slat": start_lat, "slon": start_lon, "elat": end_lat, "elon": end_lon, "alt": alt, "radius": radius})
+            df = df.replace({np.nan: None, np.inf: None, -np.inf: None})
+            return JSONResponse(content=df.to_dict(orient='records'))
+    except Exception as e:
+        logger.error(f"Stations error: {e}")
+        return JSONResponse(content=[])
+
 @app.get("/get-nearest-node-on-trail")
 def get_nearest_node_on_trail(lat: float, lon: float, trail_id: int):
     sql = text("SELECT ST_Y(p.g) as y, ST_X(p.g) as x FROM (SELECT ST_ClosestPoint(ST_LineMerge(ST_Collect(geometry)), ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)) as g FROM hiking_trails WHERE id = :tid) p")
